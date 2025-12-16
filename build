@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [[ ! -f "mips_sim" ]]; then
+  echo "executable not found" >&2
+  exit 1
+fi
+
+DEFAULT_OUT="a.out"
+if [[ $# == 1 ]]; then
+  if [[ $1 == "-h" ]]; then
+    echo "TODO"
+  else
+    ./mips_assembler "$1" $DEFAULT_OUT
+  fi
+elif [[ $# == 2 ]]; then
+  ./mips_assembler "$1" "$2"
+  exit $?
+else
+  echo "invalid arguments. run ./build -h or consult README.md" >&2
+  exit 1
+fi
