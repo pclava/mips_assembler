@@ -105,6 +105,7 @@ int it_create(InstructionTable *table) {
 
     if (table->buckets == NULL) return 0;
 
+
     // Populate from instr_table
     for (int i = 0; i < INSTRUCTION_COUNT; i++) {
         it_insert(table, instr_table[i]);
@@ -248,11 +249,6 @@ uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_
         return -1;
     }
     if (regs[2] != 0) { // Three registers given to I-type instruction
-        raise_error(ARGS_INV, NULL, __FILE__);
-        return -1;
-    }
-    // rt should always be present
-    if (regs[1] == 0) {
         raise_error(ARGS_INV, NULL, __FILE__);
         return -1;
     }

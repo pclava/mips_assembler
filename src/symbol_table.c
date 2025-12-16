@@ -47,7 +47,7 @@ int st_add_symbol(SymbolTable * table, const char *name, const uint32_t addr) {
     strcpy(s.name, name);
     s.addr = addr;
 
-    unsigned long index = hash_key(s.name, SYMBOL_SIZE);
+    unsigned long index = hash_key(s.name, SYMBOL_TABLE_SIZE);
     while (table->buckets[index].inUse) {
         if (strcmp(table->buckets[index].item.name, name) == 0) {
             raise_error(DUPL_DEF, name, __FILE__);

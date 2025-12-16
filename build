@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ ! -f "mips_sim" ]]; then
+if [[ ! -f "mips_assembler" ]]; then
   echo "executable not found" >&2
   exit 1
 fi

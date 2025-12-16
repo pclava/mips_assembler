@@ -30,7 +30,7 @@ $ ./build test.asm
 $ ./build test.asm a.out
 $ ./mips_assembler test.asm a.out
 ```
-Two example files and their object files are given in the `examples/` directory.
+An example file and its object file are given in the `examples/` directory.
 
 ## Support
 The assembler does not support the entire MIPS instruction set. Namely, it does not support:

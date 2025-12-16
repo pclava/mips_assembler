@@ -186,7 +186,7 @@ int li(const Instruction instruction, InstructionList* instructions) {
     if (instruction.imm.intValue >= SHRT_MIN && instruction.imm.intValue <= SHRT_MAX) {
         // 16-bit
         // addi $R $0 IMM
-        strcpy(i1.mnemonic, "addi");
+        strcpy(i1.mnemonic, "addiu");
         i1.registers[0] = r1;
         i1.registers[1] = 0;
         i1.registers[2] = 255;

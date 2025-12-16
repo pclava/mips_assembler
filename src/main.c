@@ -33,6 +33,8 @@ int main(int argc, char *argv[]) {
         return 3;
     }
 
+    // debug_binary(out_path);
+
     text_destroy(&text);
 
     return 0;
