@@ -8,11 +8,16 @@ fi
 DEFAULT_OUT="a.out"
 if [[ $# == 1 ]]; then
   if [[ $1 == "-h" ]]; then
-    echo "TODO"
+    cat README.md
+    exit 0
   else
     ./mips_assembler "$1" $DEFAULT_OUT
   fi
 elif [[ $# == 2 ]]; then
+  if [[ $1 == "-h" ]]; then
+    cat README.md
+    exit 0
+  fi
   ./mips_assembler "$1" "$2"
   exit $?
 else
