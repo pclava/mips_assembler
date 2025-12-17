@@ -39,7 +39,7 @@ The assembler does not support the entire MIPS instruction set. Namely, it does 
 - lb, ll
 - mcf0
 - sc
-- the following directives: double, extern, float, globl, kdata, ktext, text
+- the following directives: double, extern, float, globl, kdata, ktext
 
 It does support the following pseudoinstructions:
 - bgt, blt, bge, ble
@@ -49,6 +49,7 @@ It does support the following pseudoinstructions:
   
 ---
 Every line of code in this repository was written by a human.
+
 
 
 
