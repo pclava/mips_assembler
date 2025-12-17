@@ -5,7 +5,7 @@ if [[ ! -f "mips_assembler" ]]; then
   exit 1
 fi
 
-DEFAULT_OUT="a.out"
+DEFAULT_OUT="a.bin"
 if [[ $# == 1 ]]; then
   if [[ $1 == "-h" ]]; then
     cat README.md
