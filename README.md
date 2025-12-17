@@ -19,7 +19,7 @@ The object file has the following format:
 The particular details of the MIPS instruction set were sourced from _MIPS Assembly Language Programmer's Guide_ (Silicon Graphics, 1992). 
 
 ## Usage
-To assemble a file, you can use `build`, which expects one or two arguments. The first argument is always the source assembly file. If a second argument for the output path is not given, the assembler writes the binary to `a.out` in the same directory.
+To assemble a file, you can use `build`, which expects one or two arguments. The first argument is always the source assembly file. If a second argument for the output path is not given, the assembler writes the binary to `a.bin` in the same directory.
 You can also pass `-h` as an argument, which outputs this file.
 Alternatively, you can run the executable directly, which always requires two arguments: the source and the destination.
 
@@ -27,8 +27,8 @@ Alternatively, you can run the executable directly, which always requires two ar
 The following commands are equivalent:
 ```bash
 $ ./build test.asm
-$ ./build test.asm a.out
-$ ./mips_assembler test.asm a.out
+$ ./build test.asm a.bin
+$ ./mips_assembler test.asm a.bin
 ```
 An example file and its object file are given in the `examples/` directory.
 
@@ -48,4 +48,5 @@ It does support the following pseudoinstructions:
   
 ---
 Every line of code in this repository was written by a human.
+
 
