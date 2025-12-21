@@ -11,8 +11,8 @@
 typedef struct {
     char name[SYMBOL_SIZE]; // LABELS CAN BE UP TO 31 CHARACTERS
     uint32_t offset;        // Offset relative to start of section
-    enum Binding binding;   // Local, global, or undefined
     enum Segment segment;   // Text or data
+    enum Binding binding;   // Local, global, or undefined
 } Symbol;
 
 typedef struct {
@@ -40,5 +40,7 @@ int st_remove_symbol(const SymbolTable *table, const char *name);
 void st_destroy(const SymbolTable *t);
 
 void st_debug(const SymbolTable *t);
+
+int write_symbol_table(FILE *file, const SymbolTable *t);
 
 #endif //MIPS_ASSEMBLER_SYMBOL_TABLE_H

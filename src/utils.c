@@ -1,5 +1,8 @@
 #include "utils.h"
 
+#include "symbol_table.h"
+#include "reloc_table.h"
+
 #include <stdlib.h>
 #include <ctype.h>
 #include <stddef.h>
@@ -513,8 +516,6 @@ void debug_binary(const char *name) {
     fread(&header, sizeof(header), 1, file);\
     printf("text size: %d\n", header.text_size);
     printf("data size: %d\n", header.data_size);
-    printf("relocation table size: %d\n", header.rlc_size);
-    printf("symbol table size: %d\n", header.sym_size);
 
     printf("\n");
     for (size_t i = 0; i < header.text_size/4; i++) {
@@ -526,6 +527,42 @@ void debug_binary(const char *name) {
     for (size_t i = 0; i < header.data_size; i++) {
         unsigned char c = read_byte(file);
         printf("byte: 0x%.2x (%c)\n", c, c);
+    }
+
+    printf("\n");
+    uint32_t rlc_size = read_word(file);
+    for (size_t i = 0; i < rlc_size; i++) {
+        RelocationEntry entry;
+        fread(&entry, sizeof(RelocationEntry), 1, file);
+        char s[6];
+        if (entry.segment == TEXT)
+            strcpy(s, ".text");
+        else if (entry.segment == DATA)
+            strcpy(s, ".data");
+
+        printf("address at %s+%d needs relocation of type %d for symbol %s\n", s, entry.target_offset, entry.reloc_type, entry.dependency);
+    }
+
+    printf("\n");
+    uint32_t sym_size = read_word(file);
+    for (size_t i = 0; i < sym_size; i++) {
+        char sym_name[SYMBOL_SIZE];
+        uint32_t offset;
+        enum Segment segment;
+        enum Binding binding;
+        fread(&sym_name, SYMBOL_SIZE*sizeof(char), 1, file);
+        fread(&offset, sizeof(uint32_t), 1, file);
+        fread(&segment, sizeof(enum Segment), 1, file);
+        fread(&binding, sizeof(enum Binding), 1, file);
+        char s[6];
+        if (segment == TEXT) {
+            strcpy(s, ".text");
+        } else if (segment == DATA) {
+            strcpy(s, ".data");
+        } else {
+            strcpy(s, "UNDEF");
+        }
+        printf("symbol %s at %s+%d (binding %d)\n", sym_name, s, offset, binding);
     }
 
     fclose(file);

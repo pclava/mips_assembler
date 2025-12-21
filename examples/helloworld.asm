@@ -1,8 +1,9 @@
 # Print the string a given number of times
 
 .data
+.globl str
 str: .asciiz "Hello, World!\n"
-num: .word 16
+num: .word 245
 addr: .word str num
 
 .text

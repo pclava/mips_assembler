@@ -28,8 +28,7 @@ extern const char *REGISTERS[REGISTER_COUNT];
 struct FileHeader {
     uint32_t text_size; // Text segment, in bytes
     uint32_t data_size; // Data segment, in bytes
-    uint32_t rlc_size;  // Relocation table, in bytes
-    uint32_t sym_size;  // Symbol table, in bytes
+    // Note that the size of the relocation table and symbol tables are not in the main header but the start of their respective sections
 };
 
 /* === FILE I/O === */

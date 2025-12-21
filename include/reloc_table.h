@@ -37,4 +37,6 @@ void rt_debug(const RelocationTable *table);
 
 void re_debug(RelocationEntry);
 
+int write_reloc_table(FILE *file, const RelocationTable *table);
+
 #endif //MIPS_ASSEMBLER_RELOC_TABLE_H

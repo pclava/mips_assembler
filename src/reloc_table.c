@@ -69,5 +69,16 @@ void re_debug(const RelocationEntry entry) {
         strcpy(segment, ".data");
     }
 
-    printf("address at %s+0x%d needs relocation of type %d for symbol %s\n", segment, entry.target_offset, entry.reloc_type, entry.dependency);
+    printf("address at %s+%d needs relocation of type %d for symbol %s\n", segment, entry.target_offset, entry.reloc_type, entry.dependency);
+}
+
+int write_reloc_table(FILE *file, const RelocationTable *table) {
+    write_word(file, table->len);
+    for (size_t i = 0; i < table->len; i++) {
+        if (fwrite(&table->list[i], sizeof(RelocationEntry), 1, file) == 0) {
+            ERROR_HANDLER.err_code = FILE_IO;
+            return 0;
+        }
+    }
+    return 1;
 }

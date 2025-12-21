@@ -578,8 +578,6 @@ int assembler_second_pass(Assembler *assembler, const char *output) {
     struct FileHeader header;
     header.text_size = assembler->instruction_list->text_offset;
     header.data_size = assembler->data_list->data_offset;
-    header.rlc_size = 0;
-    header.sym_size = 0;
     fwrite(&header, sizeof(header), 1, file);
 
     // === Write Instructions ===
@@ -594,6 +592,26 @@ int assembler_second_pass(Assembler *assembler, const char *output) {
 
     // == Write Data ===
     success = write_data_list(file, assembler);
+    if (success == 0) {
+        if (ERROR_HANDLER.err_code == FILE_IO) {
+            raise_error(FILE_IO, output, __FILE__);
+        }
+        fclose(file);
+        return 0;
+    }
+
+    // === Write Relocation Table ===
+    success = write_reloc_table(file, assembler->relocation_table);
+    if (success == 0) {
+        if (ERROR_HANDLER.err_code == FILE_IO) {
+            raise_error(FILE_IO, output, __FILE__);
+        }
+        fclose(file);
+        return 0;
+    }
+
+    // === Write Symbol Table
+    success = write_symbol_table(file, assembler->symbol_table);
     if (success == 0) {
         if (ERROR_HANDLER.err_code == FILE_IO) {
             raise_error(FILE_IO, output, __FILE__);
@@ -634,7 +652,6 @@ int assemble(const Text *preprocessed, const char *output) {
         return 0;
     }
 
-    assembler_debug(&assembler);
     assembler_destroy(&assembler);
     return 1;
 }

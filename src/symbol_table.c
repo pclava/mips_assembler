@@ -127,3 +127,16 @@ void st_debug(const SymbolTable *table) {
         }
     }
 }
+
+int write_symbol_table(FILE *file, const SymbolTable *table) {
+    write_word(file, table->size);
+    for (size_t i = 0; i < SYMBOL_TABLE_SIZE; i++) {
+        if (table->buckets[i].inUse) {
+            if (fwrite(&table->buckets[i].item, sizeof(Symbol), 1, file) == 0) {
+                ERROR_HANDLER.err_code = FILE_IO;
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
