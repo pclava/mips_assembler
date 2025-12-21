@@ -227,7 +227,7 @@ uint32_t convert_rtype(const Instruction instruction, const InstrDesc *desc) {
     return opcode | regs[0] | regs[1] | regs[2] | shamt | funct;
 }
 
-uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_table, const InstrDesc *desc, const uint32_t current_address) {
+uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_table, const InstrDesc *desc, const uint32_t current_offset) {
     if (desc->format != I) {
         raise_error(NOERR, NULL, __FILE__);
         return -1;
@@ -261,9 +261,17 @@ uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_
             raise_error(ARGS_INV, NULL, __FILE__);
             return -1;
         }
-        const uint32_t target_addr = st_get_symbol(symbol_table, instruction.imm.symbol);
-        if (target_addr == 0xffffffff) {return -1;}
-        imm = ((target_addr - current_address) >> 2) - 1 & 0x0000FFFF;
+
+        Symbol *s = st_get_symbol(symbol_table, instruction.imm.symbol);
+        if (s == NULL) return -1;
+        uint32_t target_offset = s->offset;
+        if (s->segment != TEXT) {
+            raise_error(ARG_INV, instruction.imm.symbol, __FILE__);
+            error_context("attempted branch outside of text segment");
+            return -1;
+        }
+
+        imm = ((target_offset - current_offset) >> 2) - 1 & 0x0000FFFF;
     }
     else if (opcode >= 8 && opcode <= 15) { // Traditional operation
         // Get numerical immediate
@@ -274,8 +282,10 @@ uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_
 
         // hi and lo bits of a symbol
         if (instruction.imm.type == SYMBOL) {
-            imm = st_get_symbol(symbol_table, instruction.imm.symbol);
-            if (imm == 0xffffffff) return -1;
+            Symbol *s = st_get_symbol(symbol_table, instruction.imm.symbol);
+            if (s == NULL) return -1;
+            imm = s->offset;
+
             switch (instruction.imm.modifier) {
                 case 1: // hi
                     imm >>= 16;
@@ -367,15 +377,17 @@ uint32_t convert_jtype(const Instruction instruction, const SymbolTable *symbol_
         return -1;
     }
 
-    const uint32_t target_addr = st_get_symbol(symbol_table, instruction.imm.symbol);
-    if (target_addr == 0xffffffff) return -1;
-    if ((target_addr & 0xF0000000) != (current_address & 0xF0000000)) { // Compare the MSBs of target and PC
+    Symbol *s = st_get_symbol(symbol_table, instruction.imm.symbol);
+    if (s == NULL) return -1;
+    const uint32_t target_offset = s->offset;
+
+    if ((target_offset & 0xF0000000) != (current_address & 0xF0000000)) { // Compare the MSBs of target and PC
         raise_error(ARGS_INV, NULL, __FILE__);
         error_context("Jump target out of range");
         return -1;
     }
     // Mask out 4 MSBs, then shift by 2
-    const uint32_t imm = (target_addr & 0x0FFFFFFF) >> 2;
+    const uint32_t imm = (target_offset & 0x0FFFFFFF) >> 2;
 
     opcode <<= 26;
     return opcode | imm;
