@@ -1,13 +1,11 @@
 # Print the string a given number of times
 
 .data
-.globl str
 str: .asciiz "Hello, World!\n"
 num: .word 245
-addr: .word str num
 
 .text
-la $t0 globl_num
+la $t0 num
 lw $s0 0($t0)
 
 la $a0 str

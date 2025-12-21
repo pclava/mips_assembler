@@ -63,7 +63,7 @@ int parse_instruction(const Assembler *assembler, const char *line, Instruction 
 
             // Copy over symbol
             for (size_t i = 0; i < len-1; i++) {
-                if (!isalnum(token[i])) {
+                if ( !( isalnum(token[i]) || token[i] == '_' || token[i] == '$' || token[i] == '.' ) ) {
                     raise_error(SYMBOL_INV, token, __FILE__);
                     return 0;
                 }
@@ -227,7 +227,7 @@ int read_data(const Assembler *assembler, const Line *line) {
             }
 
             for (size_t i = 0; i < strlen(token)-1; i++) {
-                if (!isalnum(token[i])) {
+                if ( !( isalnum(token[i]) || token[i] == '_' || token[i] == '$' || token[i] == '.' ) ) {
                     raise_error(SYMBOL_INV, token, __FILE__);
                     free(argument);
                     return 0;
