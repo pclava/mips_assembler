@@ -10,9 +10,17 @@
 #define SYMBOL_SIZE 32
 #define MNEMONIC_LENGTH 10
 
-enum Segment { TEXT, DATA };
+enum Segment { TEXT, DATA, UNDEF };
 
-enum Binding { LOCAL, GLOBAL, UNDEF };
+enum Binding { LOCAL, GLOBAL };
+
+enum RelocType {
+    R_32,
+    R_26,
+    R_PC16,
+    R_HI16,
+    R_LO16
+};
 
 #define REGISTER_COUNT 32
 extern const char *REGISTERS[REGISTER_COUNT];

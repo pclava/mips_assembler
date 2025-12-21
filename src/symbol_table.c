@@ -52,6 +52,13 @@ int st_add_symbol(SymbolTable * table, const char *name, const uint32_t offset, 
     unsigned long index = hash_key(s.name, SYMBOL_TABLE_SIZE);
     while (table->buckets[index].inUse) {
         if (strcmp(table->buckets[index].item.name, name) == 0) {
+            // Symbol exists, modify if not defined
+            if (table->buckets[index].item.segment == UNDEF) {
+                table->buckets[index].item.offset = offset;
+                table->buckets[index].item.segment = segment;
+                return 1;
+            }
+
             raise_error(DUPL_DEF, name, __FILE__);
             return 0;
         }
@@ -65,25 +72,42 @@ int st_add_symbol(SymbolTable * table, const char *name, const uint32_t offset, 
     return 1;
 }
 
-// Returns a pointer to the corresponding symbol, or NULL on failure
-Symbol * st_get_symbol(const SymbolTable *table, const char *name) {
+// Returns the index in the table, or SYMBOL_TABLE_SIZE if not found
+unsigned long st_exists(const SymbolTable *table, const char *name) {
     unsigned long index = hash_key(name, SYMBOL_TABLE_SIZE);
     if (!table->buckets[index].inUse) {
-        raise_error(TOKEN_ERR, name, __FILE__);
-        return NULL;
+        return SYMBOL_TABLE_SIZE;
     }
-
     int indices_searched = 0;
     while (strcmp(name, table->buckets[index].item.name) != 0) {
         index = (index + 1) % SYMBOL_TABLE_SIZE;
         indices_searched++;
         if (indices_searched >= SYMBOL_TABLE_SIZE) {
-            raise_error(ST_SIZE_ERR, name, __FILE__);
-            return NULL;
+            return SYMBOL_TABLE_SIZE;
         }
+    }
+    return index;
+}
+
+// Returns a pointer to the corresponding symbol, or NULL on failure
+Symbol * st_get_symbol(const SymbolTable *table, const char *name) {
+    unsigned long index = st_exists(table, name);
+    if (index == SYMBOL_TABLE_SIZE) {
+        raise_error(TOKEN_ERR, name, __FILE__);
+        return NULL;
     }
 
     return &table->buckets[index].item;
+}
+
+// Removes the symbol from the table, returns whether the symbol existed
+int st_remove_symbol(const SymbolTable *table, const char *name) {
+    unsigned long index = st_exists(table, name);
+    if (index == SYMBOL_TABLE_SIZE) {
+        return 0;
+    }
+    table->buckets[index].inUse = 0;
+    return 1;
 }
 
 // Frees resources
@@ -94,7 +118,12 @@ void st_destroy(const SymbolTable *t) {
 void st_debug(const SymbolTable *table) {
     for (int i = 0; i < SYMBOL_TABLE_SIZE; i++) {
         if (table->buckets[i].inUse) {
-            printf("%s: 0x%.8x\n", table->buckets[i].item.name, table->buckets[i].item.offset);
+            if (table->buckets[i].item.segment == TEXT)
+                printf("%s: .text + %d, binding %d\n", table->buckets[i].item.name, table->buckets[i].item.offset, table->buckets[i].item.binding);
+            else if (table->buckets[i].item.segment == DATA)
+                printf("%s: .data + %d, binding %d\n", table->buckets[i].item.name, table->buckets[i].item.offset, table->buckets[i].item.binding);
+            else if (table->buckets[i].item.segment == UNDEF)
+                printf("%s: undefined, binding %d\n", table->buckets[i].item.name, table->buckets[i].item.binding);
         }
     }
 }

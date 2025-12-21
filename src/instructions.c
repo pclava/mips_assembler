@@ -331,6 +331,7 @@ uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_
 
         Immediate i;
         const int r = read_base_address(instruction.imm.symbol, &i);
+        st_remove_symbol(symbol_table, instruction.imm.symbol);
         if (r == -1) {
             raise_error(ARG_INV, instruction.imm.symbol, __FILE__);
             return -1;

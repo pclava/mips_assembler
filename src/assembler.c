@@ -50,15 +50,17 @@ int parse_instruction(const Assembler *assembler, const char *line, Instruction 
 
         // Check if token is a label
         if (token[len-1] == ':') {
+            // Check for errors
             if (readMnemonic || len <= 1) { // Labels should not be empty and should not come after the mnemonic
                 raise_error(SYMBOL_INV, token, __FILE__);
                 return 0;
             }
-
             if (isnumber(token[0])) {
                 raise_error(SYMBOL_INV, token, __FILE__);
                 return 0;
             }
+
+            // Copy over symbol
             for (size_t i = 0; i < len-1; i++) {
                 if (!isalnum(token[i])) {
                     raise_error(SYMBOL_INV, token, __FILE__);
@@ -67,6 +69,8 @@ int parse_instruction(const Assembler *assembler, const char *line, Instruction 
                 label[i] = token[i];
             }
             label[len-1] = '\0';
+
+            // Add to symbol table (assumes local, but if it exists as global, will preserve that binding)
             st_add_symbol(assembler->symbol_table, label, assembler->instruction_list->text_offset, TEXT, LOCAL);
         }
 
@@ -116,6 +120,15 @@ int parse_instruction(const Assembler *assembler, const char *line, Instruction 
                     raise_error(ARG_INV, token, __FILE__);
                     return 0;
                 }
+
+                // Check symbol
+                if (instruction->imm.type == SYMBOL) {
+                    if (st_exists(assembler->symbol_table, instruction->imm.symbol) == SYMBOL_TABLE_SIZE) {
+                        // Doesn't exist yet, add as local undefined. may be made global later
+                        st_add_symbol(assembler->symbol_table, instruction->imm.symbol, 0, UNDEF, LOCAL);
+                    }
+                }
+
                 break;
             }
         }
@@ -503,6 +516,28 @@ int assembler_first_pass(Assembler *assembler) {
                 current_segment = DATA;
                 continue;
             }
+            if (strcmp(directive, "globl") == 0) {
+                // Add all arguments to symbol table as global undefined symbols
+                char line_cpy[strlen(line->text)+1];
+                strcpy(line_cpy,line->text);
+                const char *token = tokenize(line_cpy, ' ');
+                token = tokenize(NULL, ' '); // tokenize again to skip the directive
+                if (token == NULL) {
+                    raise_error(ARGS_INV, NULL, __FILE__);
+                    return 0;
+                }
+                while (token != NULL) {
+                    const unsigned long index = st_exists(assembler->symbol_table, token);
+                    if (index == SYMBOL_TABLE_SIZE) { // symbol does not exist
+                        st_add_symbol(assembler->symbol_table, token, 0, UNDEF, GLOBAL);
+                    } else { // symbol exists; make global
+                        assembler->symbol_table->buckets[index].item.binding = GLOBAL;
+                    }
+
+                    token = tokenize(NULL, ' ');
+                }
+                continue;
+            }
             if (current_segment != DATA) { // Any other directive must be in the data segment
                 raise_error(TOKEN_ERR, directive, __FILE__);
                 return 0;
@@ -517,7 +552,7 @@ int assembler_first_pass(Assembler *assembler) {
         }
 
         // DATA
-        else {
+        else if (current_segment == DATA){
             if (read_data(assembler, line) == 0) {
                 return 0;
             }
@@ -583,13 +618,22 @@ int assemble(const Text *preprocessed, const char *output) {
         return 0;
     }
 
-    assembler_debug(&assembler);
+    // Check for undefined local symbols and make global
+    // This behavior essentially automatically imports any undefined symbol
+    for (int i = 0; i < SYMBOL_TABLE_SIZE; i++) {
+        if (assembler.symbol_table->buckets[i].inUse) {
+            if (assembler.symbol_table->buckets[i].item.segment == UNDEF) {
+                assembler.symbol_table->buckets[i].item.binding = GLOBAL;
+            }
+        }
+    }
 
     if (assembler_second_pass(&assembler, output) == 0) {
         assembler_destroy(&assembler);
         return 0;
     }
 
+    assembler_debug(&assembler);
     assembler_destroy(&assembler);
     return 1;
 }
