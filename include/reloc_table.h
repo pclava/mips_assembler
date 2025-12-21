@@ -27,6 +27,8 @@ typedef struct {
 
 int rt_init(RelocationTable *table);
 
+int re_init(RelocationEntry *reloc, uint32_t offset, enum Segment segment, enum RelocType reloc_type, const char *dependency);
+
 int rt_add(RelocationTable *table, RelocationEntry entry);
 
 void rt_destroy(const RelocationTable *table);

@@ -24,6 +24,19 @@ int rt_init(RelocationTable *table) {
     return 1;
 }
 
+// Initializes a RelocationEntry
+int re_init(RelocationEntry *reloc, uint32_t offset, enum Segment segment, enum RelocType reloc_type, const char *dependency) {
+    reloc->target_offset = offset;
+    reloc->reloc_type = reloc_type;
+    reloc->segment = segment;
+    if (strlen(dependency) >= SYMBOL_SIZE) {
+        raise_error(TOKEN_ERR, dependency, __FILE__);
+        return 0;
+    }
+    strcpy(reloc->dependency, dependency);
+    return 1;
+}
+
 // Adds the relocation entry
 int rt_add(RelocationTable *table, RelocationEntry entry) {
     if (table->len >= table->cap) {

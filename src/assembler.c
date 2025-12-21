@@ -1,4 +1,5 @@
 #include "assembler.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -382,9 +383,9 @@ uint32_t convert_instruction(const Instruction instruction, const Assembler* ass
         case R:
             return convert_rtype(instruction, instruction_desc);
         case I:
-            return convert_itype(instruction, assembler->symbol_table, instruction_desc, current_addr);
+            return convert_itype(instruction, assembler->symbol_table, assembler->relocation_table, instruction_desc, current_addr);
         case J:
-            return convert_jtype(instruction, assembler->symbol_table, instruction_desc, current_addr);
+            return convert_jtype(instruction, assembler->symbol_table, assembler->relocation_table, instruction_desc, current_addr);
         default:
             raise_error(NOERR, NULL, __FILE__);
             return -1;
@@ -591,6 +592,7 @@ int assembler_second_pass(Assembler *assembler, const char *output) {
         fclose(file);
         return 0;
     }
+
     // == Write Data ===
     success = write_data_list(file, assembler);
     if (success == 0) {
@@ -682,6 +684,15 @@ int assembler_init(Assembler *assembler, const Text *preprocessed) {
     if (it_create(instruction_table) == 0) return 0;
     assembler->instruction_table = instruction_table;
 
+    // Initialize relocation table
+    RelocationTable *relocation_table = malloc(sizeof(RelocationTable));
+    if (relocation_table == NULL) {
+        raise_error(MEM, NULL, __FILE__);
+        return 0;
+    }
+    if (rt_init(relocation_table) == 0) return 0;
+    assembler->relocation_table = relocation_table;
+
     return 1;
 }
 
@@ -702,6 +713,9 @@ void assembler_destroy(Assembler *assembler) {
     if (assembler->instruction_table != NULL) {
         it_destroy(assembler->instruction_table);
     }
+    if (assembler->relocation_table != NULL) {
+        rt_destroy(assembler->relocation_table);
+    }
 }
 
 void assembler_debug(const Assembler *assembler) {
@@ -721,5 +735,11 @@ void assembler_debug(const Assembler *assembler) {
         il_debug(assembler->instruction_list);
     } else {
         printf("No instruction list found\n");
+    }
+
+    if (assembler->relocation_table != NULL) {
+        rt_debug(assembler->relocation_table);
+    } else {
+        printf("No relocation table found\n");
     }
 }
