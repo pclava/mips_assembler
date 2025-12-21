@@ -8,9 +8,6 @@
 
 /* === TYPES === */
 
-enum Segment { TEXT, DATA };
-
-
 typedef struct {
     const Text *preprocessed;
     DataList *data_list;

@@ -67,7 +67,7 @@ int parse_instruction(const Assembler *assembler, const char *line, Instruction 
                 label[i] = token[i];
             }
             label[len-1] = '\0';
-            st_add_symbol(assembler->symbol_table, label, assembler->instruction_list->text_addr);
+            st_add_symbol(assembler->symbol_table, label, assembler->instruction_list->text_offset, TEXT, LOCAL);
         }
 
         // Read mnemonic. This will catch the first token not ending in ':' and set readMnemonic to true.
@@ -256,7 +256,7 @@ int read_data(const Assembler *assembler, const Line *line) {
                 // Save label(s) (after alignment)
                 if (labels[0][0] != '\0') {
                     for (size_t i = 0; i < label_count; i++) {
-                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_addr) == 0) {
+                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_offset, DATA, LOCAL) == 0) {
                             free(argument);
                             return 0;
                         }
@@ -274,7 +274,7 @@ int read_data(const Assembler *assembler, const Line *line) {
                 // Save label(s) (before adding space)
                 if (labels[0][0] != '\0') {
                     for (size_t i = 0; i < label_count; i++) {
-                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_addr) == 0) {
+                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_offset, DATA, LOCAL) == 0) {
                             free(argument);
                             return 0;
                         }
@@ -330,7 +330,7 @@ int read_data(const Assembler *assembler, const Line *line) {
                 // Write the label(s)
                 if (labels[0][0] != '\0') {
                     for (size_t i = 0; i < label_count; i++) {
-                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_addr) == 0) {
+                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_offset, DATA, LOCAL) == 0) {
                             free(argument);
                             return 0;
                         }
@@ -379,8 +379,8 @@ uint32_t convert_instruction(const Instruction instruction, const Assembler* ass
 }
 
 // Goes through every instruction and writes its 32-bit machine code to the file. Returns 0 on failure
-int write_instruction_list(FILE *file, const Assembler *assembler, const struct FileHeader *header) {
-    uint32_t current_addr = header->text_entry;
+int write_instruction_list(FILE *file, const Assembler *assembler) {
+    uint32_t current_addr = 0;
 
     for (size_t i = 0; i < assembler->instruction_list->len; i++) {
         const Instruction instruction = assembler->instruction_list->list[i];
@@ -408,17 +408,20 @@ int write_instruction_list(FILE *file, const Assembler *assembler, const struct 
 // Writes a Data structure to the file
 int write_data(FILE *file, Data data, const SymbolTable *symbol_table) {
     if (data.isSymbol) {
-        const uint32_t target_address = st_get_symbol(symbol_table, data.value.symbol);
-        if (target_address == 0) return 0;
+
+        Symbol *s = st_get_symbol(symbol_table, data.value.symbol);
+        if (s == NULL) return 0;
+        uint32_t target_offset = s->offset;
+
         switch (data.type) {
             case WORD:
-                data.value.word = (int32_t) target_address;
+                data.value.word = (int32_t) target_offset;
                 break;
             case HALF:
-                data.value.half = (int16_t) (target_address & 0x0000FFFF);
+                data.value.half = (int16_t) (target_offset & 0x0000FFFF);
                 break;
             case BYTE:
-                data.value.byte = (int8_t) (target_address & 0x000000FF);
+                data.value.byte = (int8_t) (target_offset & 0x000000FF);
                 break;
             default:
                 raise_error(ARGS_INV, NULL, __FILE__);
@@ -538,14 +541,14 @@ int assembler_second_pass(Assembler *assembler, const char *output) {
 
     // === Write Header ===
     struct FileHeader header;
-    header.text_entry = TEXT_ENTRY;
-    header.data_entry = DATA_ENTRY;
-    header.text_size = assembler->instruction_list->text_addr - TEXT_ENTRY;
-    header.data_size = assembler->data_list->data_addr - DATA_ENTRY;
+    header.text_size = assembler->instruction_list->text_offset;
+    header.data_size = assembler->data_list->data_offset;
+    header.rlc_size = 0;
+    header.sym_size = 0;
     fwrite(&header, sizeof(header), 1, file);
 
     // === Write Instructions ===
-    int success = write_instruction_list(file, assembler, &header);
+    int success = write_instruction_list(file, assembler);
     if (success == 0) {
         if (ERROR_HANDLER.err_code == FILE_IO) {
             raise_error(FILE_IO, output, __FILE__);
@@ -580,7 +583,7 @@ int assemble(const Text *preprocessed, const char *output) {
         return 0;
     }
 
-    // assembler_debug(&assembler);
+    assembler_debug(&assembler);
 
     if (assembler_second_pass(&assembler, output) == 0) {
         assembler_destroy(&assembler);
@@ -614,7 +617,7 @@ int assembler_init(Assembler *assembler, const Text *preprocessed) {
         raise_error(MEM, NULL, __FILE__);
         return 0;
     }
-    if (il_init(instruction_list, TEXT_ENTRY) == 0) return 0;
+    if (il_init(instruction_list, 0) == 0) return 0;
     assembler->instruction_list = instruction_list;
 
     // Initialize data list
@@ -623,7 +626,7 @@ int assembler_init(Assembler *assembler, const Text *preprocessed) {
         raise_error(MEM, NULL, __FILE__);
         return 0;
     }
-    if (dl_init(data_list, DATA_ENTRY) == 0) return 0;
+    if (dl_init(data_list, 0) == 0) return 0;
     assembler->data_list = data_list;
 
     // Initialize instruction table

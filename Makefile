@@ -1,6 +1,6 @@
 CC=gcc
 IDIR=include
-CFLAGS=-Wall -Wextra -I$(IDIR)
+CFLAGS=-Wall -Wextra -I$(IDIR) -g
 
 SRC := $(wildcard src/*.c)
 OBJ := $(SRC:.c=.o)
@@ -15,4 +15,4 @@ src/%.o: src/%.c
 
 .PHONY: clean
 clean:
-	rm -f src/*.o mips_assembler
+	rm -f src/*.o

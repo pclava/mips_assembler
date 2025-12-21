@@ -131,7 +131,7 @@ int dl_init(DataList * data_list, uint32_t entry) {
         raise_error(MEM, NULL, __FILE__);
         return 0;
     }
-    data_list->data_addr = entry;
+    data_list->data_offset = entry;
     return 1;
 }
 
@@ -151,7 +151,7 @@ int add_data(DataList *data_list, const Data data) {
     data_list->list[data_list->len] = data;
     data_list->len++;
 
-    data_list->data_addr += data.size;
+    data_list->data_offset += data.size;
     return 1;
 }
 
@@ -169,7 +169,7 @@ void dl_debug(const DataList *data_list) {
     for (size_t i = 0; i < data_list->len; i++) {
         data_debug(data_list->list[i]);
     }
-    printf("data address: %x\n", data_list->data_addr);
+    printf("data size: %d\n", data_list->data_offset);
 }
 
 void data_debug(const Data data) {
@@ -243,7 +243,7 @@ uint32_t data_align(const int type, const DataList *data_list) {
     }
 
     uint32_t bytes = 0;
-    while ((data_list->data_addr + bytes) % x != 0) bytes++;
+    while ((data_list->data_offset + bytes) % x != 0) bytes++;
     return bytes;
 }
 

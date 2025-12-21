@@ -1,5 +1,4 @@
-#include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 #include "assembler.h"
 #include "preprocess.h"
 #include "utils.h"
@@ -33,7 +32,7 @@ int main(int argc, char *argv[]) {
         return 3;
     }
 
-    // debug_binary(out_path);
+    debug_binary(out_path);
 
     text_destroy(&text);
 

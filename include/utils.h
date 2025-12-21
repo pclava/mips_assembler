@@ -9,17 +9,19 @@
 #define MAX_6U 63
 #define SYMBOL_SIZE 32
 #define MNEMONIC_LENGTH 10
-#define TEXT_ENTRY 0x00400000
-#define DATA_ENTRY 0x10010000
+
+enum Segment { TEXT, DATA };
+
+enum Binding { LOCAL, GLOBAL, UNDEF };
 
 #define REGISTER_COUNT 32
 extern const char *REGISTERS[REGISTER_COUNT];
 
 struct FileHeader {
-    uint32_t text_entry;
-    uint32_t data_entry;
-    uint32_t text_size;
-    uint32_t data_size;
+    uint32_t text_size; // Text segment, in bytes
+    uint32_t data_size; // Data segment, in bytes
+    uint32_t rlc_size;  // Relocation table, in bytes
+    uint32_t sym_size;  // Symbol table, in bytes
 };
 
 /* === FILE I/O === */

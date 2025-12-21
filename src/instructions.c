@@ -262,7 +262,7 @@ uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_
             return -1;
         }
         const uint32_t target_addr = st_get_symbol(symbol_table, instruction.imm.symbol);
-        if (target_addr == 0) {return -1;}
+        if (target_addr == 0xffffffff) {return -1;}
         imm = ((target_addr - current_address) >> 2) - 1 & 0x0000FFFF;
     }
     else if (opcode >= 8 && opcode <= 15) { // Traditional operation
@@ -275,7 +275,7 @@ uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_
         // hi and lo bits of a symbol
         if (instruction.imm.type == SYMBOL) {
             imm = st_get_symbol(symbol_table, instruction.imm.symbol);
-            if (imm == 0) return -1;
+            if (imm == 0xffffffff) return -1;
             switch (instruction.imm.modifier) {
                 case 1: // hi
                     imm >>= 16;
@@ -368,7 +368,7 @@ uint32_t convert_jtype(const Instruction instruction, const SymbolTable *symbol_
     }
 
     const uint32_t target_addr = st_get_symbol(symbol_table, instruction.imm.symbol);
-    if (target_addr == 0) return -1;
+    if (target_addr == 0xffffffff) return -1;
     if ((target_addr & 0xF0000000) != (current_address & 0xF0000000)) { // Compare the MSBs of target and PC
         raise_error(ARGS_INV, NULL, __FILE__);
         error_context("Jump target out of range");

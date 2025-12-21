@@ -510,11 +510,11 @@ int read_base_address(const char *str, Immediate *imm) {
 void debug_binary(const char *name) {
     FILE *file = fopen(name, "rb");
     struct FileHeader header;
-    fread(&header, sizeof(header), 1, file);
-    printf("text entry: %.8x\n", header.text_entry);
-    printf("data entry: %.8x\n", header.data_entry);
+    fread(&header, sizeof(header), 1, file);\
     printf("text size: %d\n", header.text_size);
     printf("data size: %d\n", header.data_size);
+    printf("relocation table size: %d\n", header.rlc_size);
+    printf("symbol table size: %d\n", header.sym_size);
 
     printf("\n");
     for (size_t i = 0; i < header.text_size/4; i++) {

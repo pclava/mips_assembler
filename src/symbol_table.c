@@ -33,7 +33,7 @@ int st_init(SymbolTable *table) {
 }
 
 // Adds to symbol table. Does not check if the symbol is valid per MIPS guidelines (i.e., alphanumeric only).
-int st_add_symbol(SymbolTable * table, const char *name, const uint32_t addr) {
+int st_add_symbol(SymbolTable * table, const char *name, const uint32_t offset, enum Segment segment, enum Binding binding) {
     if (table->size >= SYMBOL_TABLE_SIZE) {
         raise_error(ST_SIZE_ERR, name, __FILE__);
         return 0;
@@ -45,7 +45,9 @@ int st_add_symbol(SymbolTable * table, const char *name, const uint32_t addr) {
         return 0;
     }
     strcpy(s.name, name);
-    s.addr = addr;
+    s.offset = offset;
+    s.segment = segment;
+    s.binding = binding;
 
     unsigned long index = hash_key(s.name, SYMBOL_TABLE_SIZE);
     while (table->buckets[index].inUse) {
@@ -63,12 +65,12 @@ int st_add_symbol(SymbolTable * table, const char *name, const uint32_t addr) {
     return 1;
 }
 
-// Looks up the name and returns the address, or 0 on failure
-uint32_t st_get_symbol(const SymbolTable *table, const char *name) {
+// Returns a pointer to the corresponding symbol, or NULL on failure
+Symbol * st_get_symbol(const SymbolTable *table, const char *name) {
     unsigned long index = hash_key(name, SYMBOL_TABLE_SIZE);
     if (!table->buckets[index].inUse) {
         raise_error(TOKEN_ERR, name, __FILE__);
-        return 0;
+        return NULL;
     }
 
     int indices_searched = 0;
@@ -77,11 +79,11 @@ uint32_t st_get_symbol(const SymbolTable *table, const char *name) {
         indices_searched++;
         if (indices_searched >= SYMBOL_TABLE_SIZE) {
             raise_error(ST_SIZE_ERR, name, __FILE__);
-            return 0;
+            return NULL;
         }
     }
 
-    return table->buckets[index].item.addr;
+    return &table->buckets[index].item;
 }
 
 // Frees resources
@@ -92,7 +94,7 @@ void st_destroy(const SymbolTable *t) {
 void st_debug(const SymbolTable *table) {
     for (int i = 0; i < SYMBOL_TABLE_SIZE; i++) {
         if (table->buckets[i].inUse) {
-            printf("%s: 0x%.8x\n", table->buckets[i].item.name, table->buckets[i].item.addr);
+            printf("%s: 0x%.8x\n", table->buckets[i].item.name, table->buckets[i].item.offset);
         }
     }
 }

@@ -10,7 +10,9 @@
 
 typedef struct {
     char name[SYMBOL_SIZE]; // LABELS CAN BE UP TO 31 CHARACTERS
-    uint32_t addr;
+    uint32_t offset;        // Offset relative to start of section
+    enum Binding binding;   // Local, global, or undefined
+    enum Segment segment;   // Text or data
 } Symbol;
 
 typedef struct {
@@ -27,9 +29,9 @@ typedef struct {
 
 int st_init(SymbolTable *table);
 
-int st_add_symbol(SymbolTable *table, const char *name, uint32_t addr);
+int st_add_symbol(SymbolTable *table, const char *name, uint32_t offset, enum Segment segment, enum Binding binding);
 
-uint32_t st_get_symbol(const SymbolTable *table, const char *name);
+Symbol * st_get_symbol(const SymbolTable *table, const char *name);
 
 void st_destroy(const SymbolTable *t);
 
