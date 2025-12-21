@@ -3,9 +3,10 @@
 .data
 str: .asciiz "Hello, World!\n"
 num: .word 16
+addr: .word str num
 
 .text
-la $t0 num
+la $t0 globl_num
 lw $s0 0($t0)
 
 la $a0 str

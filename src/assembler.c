@@ -420,27 +420,24 @@ int write_instruction_list(FILE *file, const Assembler *assembler) {
 /* === SECOND PASS DATA SEGMENT === */
 
 // Writes a Data structure to the file
-int write_data(FILE *file, Data data, const SymbolTable *symbol_table) {
+int write_data(FILE *file, Data data, const SymbolTable *symbol_table, RelocationTable *relocation_table, const uint32_t current_offset) {
     if (data.isSymbol) {
 
+        // Requires R_32 relocation
         Symbol *s = st_get_symbol(symbol_table, data.value.symbol);
         if (s == NULL) return 0;
-        uint32_t target_offset = s->offset;
+        RelocationEntry reloc;
 
         switch (data.type) {
-            case WORD:
-                data.value.word = (int32_t) target_offset;
-                break;
-            case HALF:
-                data.value.half = (int16_t) (target_offset & 0x0000FFFF);
-                break;
-            case BYTE:
-                data.value.byte = (int8_t) (target_offset & 0x000000FF);
+            case WORD: // What happens with .byte and .half?
+                data.value.word = 0;
+                re_init(&reloc, current_offset, DATA, R_32, s->name);
                 break;
             default:
                 raise_error(ARGS_INV, NULL, __FILE__);
                 return 0;
         }
+        rt_add(relocation_table, reloc);
     }
 
     unsigned long success;
@@ -475,12 +472,14 @@ int write_data(FILE *file, Data data, const SymbolTable *symbol_table) {
 
 // Goes through every Data structure in the list and writes it to file. Returns 0 on failure or -1 on file IO failure.
 int write_data_list(FILE *file, Assembler *assembler) {
+    uint32_t current_offset = 0;
     for (size_t i = 0; i < assembler->data_list->len; i++) {
         const Data data = assembler->data_list->list[i];
         ERROR_HANDLER.line = data.line;
 
-        const int success = write_data(file, data, assembler->symbol_table);
+        const int success = write_data(file, data, assembler->symbol_table, assembler->relocation_table, current_offset);
         if (success <= 0) return success;
+        current_offset += data.size;
     }
     return 1;
 }
