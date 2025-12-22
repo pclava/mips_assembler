@@ -10,6 +10,9 @@
 #define SYMBOL_SIZE 32
 #define MNEMONIC_LENGTH 10
 
+#define TEXT_START 0x00400000
+#define DATA_START 0x10010000
+
 enum Segment { TEXT, DATA, UNDEF };
 
 enum Binding { LOCAL, GLOBAL };

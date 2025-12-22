@@ -29,13 +29,15 @@ typedef struct {
 
 int st_init(SymbolTable *table);
 
+int st_add_struct(SymbolTable *table, Symbol symbol);
+
 int st_add_symbol(SymbolTable *table, const char *name, uint32_t offset, enum Segment segment, enum Binding binding);
 
 unsigned long st_exists(const SymbolTable *table, const char *name);
 
 Symbol * st_get_symbol(const SymbolTable *table, const char *name);
 
-int st_remove_symbol(const SymbolTable *table, const char *name);
+int st_remove_symbol(SymbolTable *table, const char *name);
 
 void st_destroy(const SymbolTable *t);
 

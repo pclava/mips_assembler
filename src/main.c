@@ -4,6 +4,7 @@
 
 #include "assembler.h"
 #include "preprocess.h"
+#include "linker.h"
 
 /*
  * ./mips_assembler a.out src1 src2 [...src_i]
@@ -16,21 +17,29 @@ int main(int argc, char *argv[]) {
     int performLinking = 1;
     const char *out_path = NULL;
 
-    if (argc < 2) {
+    if (argc == 1) {
+        fprintf(stderr, "error in %s: invalid arguments\n", __FILE__);
+        return 1;
+    }
+
+    if (strcmp(argv[1], "-h") == 0) {
+        printf("not implemented");
+        return 0;
+    }
+
+    if (argc < 3) {
         fprintf(stderr, "error in %s: invalid arguments\n", __FILE__);
         return 1;
     }
 
     if (strcmp(argv[1], "-c") == 0) {
         performLinking = 0;
-    } else if (strcmp(argv[1], "-h") == 0) {
-        printf("not implemented");
-        return 0;
     } else {
         out_path = argv[1];
     }
 
-    char *object_files[argc-2];
+    int file_count = argc-2;
+    char *object_files[file_count];
 
     // Assemble each source file
     for (int i = 2; i < argc; i++) {
@@ -78,7 +87,17 @@ int main(int argc, char *argv[]) {
         text_destroy(&text);
     }
 
-    for (int i = 0; i < argc-2; i++) {
+    if (performLinking) {
+        if (link(out_path, object_files, file_count) == 0) {
+            fprintf(stderr, "Error in %s: could not link files\n", __FILE__);
+            for (int i = 0; i < file_count; i++) {
+                free(object_files[i]);
+            }
+            return 4;
+        }
+    }
+
+    for (int i = 0; i < file_count; i++) {
         free(object_files[i]);
     }
 

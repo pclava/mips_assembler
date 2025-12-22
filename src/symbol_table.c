@@ -32,6 +32,30 @@ int st_init(SymbolTable *table) {
     return 1;
 }
 
+int st_add_struct(SymbolTable *table, const Symbol symbol) {
+    unsigned long index = hash_key(symbol.name, SYMBOL_TABLE_SIZE);
+    while (table->buckets[index].inUse) {
+        if (strcmp(table->buckets[index].item.name, symbol.name) == 0) {
+            // Symbol exists, modify if not defined
+            if (table->buckets[index].item.segment == UNDEF) {
+                table->buckets[index].item.offset = symbol.offset;
+                table->buckets[index].item.segment = symbol.segment;
+                return 1;
+            }
+
+            raise_error(DUPL_DEF, symbol.name, __FILE__);
+            return 0;
+        }
+        index = (index + 1) % SYMBOL_TABLE_SIZE;
+    }
+
+    table->buckets[index].inUse = 1;
+    table->buckets[index].item = symbol;
+    table->size++;
+
+    return 1;
+}
+
 // Adds to symbol table. Does not check if the symbol is valid per MIPS guidelines (i.e., alphanumeric only).
 int st_add_symbol(SymbolTable * table, const char *name, const uint32_t offset, enum Segment segment, enum Binding binding) {
     if (table->size >= SYMBOL_TABLE_SIZE) {
@@ -49,27 +73,7 @@ int st_add_symbol(SymbolTable * table, const char *name, const uint32_t offset, 
     s.segment = segment;
     s.binding = binding;
 
-    unsigned long index = hash_key(s.name, SYMBOL_TABLE_SIZE);
-    while (table->buckets[index].inUse) {
-        if (strcmp(table->buckets[index].item.name, name) == 0) {
-            // Symbol exists, modify if not defined
-            if (table->buckets[index].item.segment == UNDEF) {
-                table->buckets[index].item.offset = offset;
-                table->buckets[index].item.segment = segment;
-                return 1;
-            }
-
-            raise_error(DUPL_DEF, name, __FILE__);
-            return 0;
-        }
-        index = (index + 1) % SYMBOL_TABLE_SIZE;
-    }
-
-    table->buckets[index].inUse = 1;
-    table->buckets[index].item = s;
-    table->size++;
-
-    return 1;
+    return st_add_struct(table, s);
 }
 
 // Returns the index in the table, or SYMBOL_TABLE_SIZE if not found
@@ -101,12 +105,13 @@ Symbol * st_get_symbol(const SymbolTable *table, const char *name) {
 }
 
 // Removes the symbol from the table, returns whether the symbol existed
-int st_remove_symbol(const SymbolTable *table, const char *name) {
+int st_remove_symbol(SymbolTable *table, const char *name) {
     unsigned long index = st_exists(table, name);
     if (index == SYMBOL_TABLE_SIZE) {
         return 0;
     }
     table->buckets[index].inUse = 0;
+    table->size -= 1;
     return 1;
 }
 
