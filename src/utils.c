@@ -513,9 +513,10 @@ int read_base_address(const char *str, Immediate *imm) {
 void debug_binary(const char *name) {
     FILE *file = fopen(name, "rb");
     struct FileHeader header;
-    fread(&header, sizeof(header), 1, file);\
+    fread(&header, sizeof(header), 1, file);
     printf("text size: %d\n", header.text_size);
     printf("data size: %d\n", header.data_size);
+    printf("entry: %d\n", header.entry);
 
     printf("\n");
     for (size_t i = 0; i < header.text_size/4; i++) {

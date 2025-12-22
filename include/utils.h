@@ -28,10 +28,12 @@ enum RelocType {
 #define REGISTER_COUNT 32
 extern const char *REGISTERS[REGISTER_COUNT];
 
+// Used by both object and executable files
 struct FileHeader {
     uint32_t text_size; // Text segment, in bytes
     uint32_t data_size; // Data segment, in bytes
     // Note that the size of the relocation table and symbol tables are not in the main header but the start of their respective sections
+    uint32_t entry;     // Used by executable
 };
 
 /* === FILE I/O === */

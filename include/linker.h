@@ -16,6 +16,6 @@ typedef struct {
     char *name;
 } SourceFile;
 
-int link(const char *out_path, char *object_files[], int file_count);
+int link(const char *out_path, char *object_files[], int file_count, const char *entry_symbol);
 
 #endif //MIPS_ASSEMBLER_LINKER_H

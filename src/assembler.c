@@ -578,6 +578,7 @@ int assembler_second_pass(Assembler *assembler, const char *output) {
     struct FileHeader header;
     header.text_size = assembler->instruction_list->text_offset;
     header.data_size = assembler->data_list->data_offset;
+    header.entry = TEXT_START;
     fwrite(&header, sizeof(header), 1, file);
 
     // === Write Instructions ===

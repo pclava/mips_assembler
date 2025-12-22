@@ -13,36 +13,57 @@
  * First argument: either the path to the final executable, -c to assemble without linking, or -h for help
  */
 
+/*
+ $ ./mips_assembler a.out src1 src2 [...src_i]            # assemble and link, linking _start.o and beginning execution there
+ $ ./mips_assembler -c src1 src2 [...src_i]               # only assemble into object files
+ $ ./mips_assembler -e. a.out src1 src2 [...src_i]        # -e. begins execution at the first instruction
+ $ ./mips_assembler -e symbol a.out src1 src2 [...src_i]  # -e (arg) begins execution at arg
+ */
+
 int main(int argc, char *argv[]) {
     int performLinking = 1;
-    const char *out_path = NULL;
-
-    if (argc == 1) {
-        fprintf(stderr, "error in %s: invalid arguments\n", __FILE__);
-        return 1;
-    }
-
-    if (strcmp(argv[1], "-h") == 0) {
-        printf("not implemented");
-        return 0;
-    }
-
     if (argc < 3) {
         fprintf(stderr, "error in %s: invalid arguments\n", __FILE__);
         return 1;
     }
 
-    if (strcmp(argv[1], "-c") == 0) {
-        performLinking = 0;
-    } else {
-        out_path = argv[1];
+    char *entry = "_start"; // symbol that execution should begin at; if null, begins at TEXT_START (0x00400000)
+    const char *out_path = argv[1];
+    int file_count = argc-2;
+
+    // Handle options, determine entry and outpath
+    if (argv[1][0] == '-') {
+        switch (argv[1][1]) {
+            case 'c':
+                performLinking = 0;
+                out_path = NULL;
+                break;
+            case 'e':
+                if (argv[1][2] == '.') {
+                    file_count = argc-3;
+                    entry = NULL;
+                    out_path = argv[2];
+                }
+                else {
+                    if (argc < 4) {
+                        fprintf(stderr, "error in %s: invalid arguments\n", __FILE__);
+                        return 1;
+                    }
+                    file_count = argc-4;
+                    entry = argv[2];
+                    out_path = argv[3];
+                }
+                break;
+            default:
+                fprintf(stderr, "error in %s: unrecognized option %c\n", __FILE__, argv[1][1]);
+                return 1;
+        }
     }
 
-    int file_count = argc-2;
     char *object_files[file_count];
 
     // Assemble each source file
-    for (int i = 2; i < argc; i++) {
+    for (int i = argc-file_count; i < argc; i++) {
         char *inp_path = argv[i];
 
         // Strip suffix from input path and add .o
@@ -55,7 +76,7 @@ int main(int argc, char *argv[]) {
         object_path[j++] = '.';
         object_path[j++] = 'o';
         object_path[j] = '\0';
-        object_files[i-2] = object_path;
+        object_files[i-(argc-file_count)] = object_path;
 
         FILE *inp_file = open_file(inp_path);
         if (inp_file == NULL) return 1;
@@ -88,7 +109,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (performLinking) {
-        if (link(out_path, object_files, file_count) == 0) {
+        if (link(out_path, object_files, file_count, entry) == 0) {
             fprintf(stderr, "Error in %s: could not link files\n", __FILE__);
             for (int i = 0; i < file_count; i++) {
                 free(object_files[i]);
