@@ -1,26 +1,94 @@
 #!/bin/bash
 
+# this is a mess
+
 if [[ ! -f "mips_assembler" ]]; then
   echo "executable not found" >&2
   exit 1
 fi
 
-DEFAULT_OUT="a.bin"
-if [[ $# == 1 ]]; then
-  if [[ $1 == "-h" ]]; then
+# ./build (source files) [flags] [-o output]
+# flags: -o [output], -e., -e [symbol], -c, -h
+out="a.out"
+start="_start"
+inp=()
+reading_out=0
+reading_start=0
+read_out=0
+link=1
+read_start=0
+for arg in "$@"; do
+
+  # Help
+  if [[ "$arg" == "-h" ]]; then
     cat README.md
     exit 0
-  else
-    ./mips_assembler "$1" $DEFAULT_OUT
   fi
-elif [[ $# == 2 ]]; then
-  if [[ $1 == "-h" ]]; then
-    cat README.md
-    exit 0
+
+  # Stop at assembly
+  if [[ "$arg" == "-c" ]]; then
+    link=0
+    continue
   fi
-  ./mips_assembler "$1" "$2"
-  exit $?
-else
-  echo "invalid arguments. run ./build -h or consult README.md" >&2
+
+  # User-defined start point
+  if [[ "$arg" == "-e" ]]; then
+    reading_start=1
+    continue
+  fi
+
+  # Read start point
+  if [[ $reading_start == 1 ]]; then
+    start="$arg"
+    reading_start=0
+    read_start=1
+    continue
+  fi
+
+  # Start at beginning
+  if [[ "$arg" == "-e." ]]; then
+    start=""
+    read_start=1
+    continue
+  fi
+
+  # Next argument is the output file
+  if [[ "$arg" == "-o" ]]; then
+    reading_out=1
+    continue
+  fi
+
+  # Read name of output
+  if [[ $reading_out == 1 ]]; then
+    out="$arg"
+    reading_out=0
+    read_out=1
+    continue
+  fi
+
+  # add input file
+  inp+=("$arg")
+done
+
+if [[ ${#inp[@]} -lt 1 ]]; then
+  echo "invalid arguments"
   exit 1
+fi
+
+if [[ $link == 1 ]]; then
+  if [[ "$start" == "_start" ]]; then
+    ./mips_assembler "$out" "${inp[@]}"
+  elif [[ "$start" == "" ]]; then
+    ./mips_assembler -e. "$out" "${inp[@]}"
+  else
+    ./mips_assembler -e "$start" "$out" "${inp[@]}"
+  fi
+else
+  if [[ $read_out == 1 ]]; then
+    echo "warning: cannot specify output path for object files"
+  fi
+  if [[ $read_start == 1 ]]; then
+    echo "warning: cannot specify entry point if not linking files"
+  fi
+  ./mips_assembler -c "${inp[@]}"
 fi

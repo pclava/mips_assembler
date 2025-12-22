@@ -192,6 +192,7 @@ int file_relocation(const SourceFile *source, const SymbolTable *global_symbols)
                 break;
             case DATA:
                 final_address = get_final_address(*dependency, data_offset);
+                break;
             case UNDEF:
                 if (dependency->binding != GLOBAL) {
                     fprintf(stderr, "Error linking %s: symbol undefined\n", source->name);
