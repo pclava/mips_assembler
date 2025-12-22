@@ -1,4 +1,5 @@
 #include "assembler.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -50,24 +51,28 @@ int parse_instruction(const Assembler *assembler, const char *line, Instruction 
 
         // Check if token is a label
         if (token[len-1] == ':') {
+            // Check for errors
             if (readMnemonic || len <= 1) { // Labels should not be empty and should not come after the mnemonic
                 raise_error(SYMBOL_INV, token, __FILE__);
                 return 0;
             }
-
             if (isnumber(token[0])) {
                 raise_error(SYMBOL_INV, token, __FILE__);
                 return 0;
             }
+
+            // Copy over symbol
             for (size_t i = 0; i < len-1; i++) {
-                if (!isalnum(token[i])) {
+                if ( !( isalnum(token[i]) || token[i] == '_' || token[i] == '$' || token[i] == '.' ) ) {
                     raise_error(SYMBOL_INV, token, __FILE__);
                     return 0;
                 }
                 label[i] = token[i];
             }
             label[len-1] = '\0';
-            st_add_symbol(assembler->symbol_table, label, assembler->instruction_list->text_addr);
+
+            // Add to symbol table (assumes local, but if it exists as global, will preserve that binding)
+            st_add_symbol(assembler->symbol_table, label, assembler->instruction_list->text_offset, TEXT, LOCAL);
         }
 
         // Read mnemonic. This will catch the first token not ending in ':' and set readMnemonic to true.
@@ -116,6 +121,15 @@ int parse_instruction(const Assembler *assembler, const char *line, Instruction 
                     raise_error(ARG_INV, token, __FILE__);
                     return 0;
                 }
+
+                // Check symbol
+                if (instruction->imm.type == SYMBOL) {
+                    if (st_exists(assembler->symbol_table, instruction->imm.symbol) == SYMBOL_TABLE_SIZE) {
+                        // Doesn't exist yet, add as local undefined. may be made global later
+                        st_add_symbol(assembler->symbol_table, instruction->imm.symbol, 0, UNDEF, LOCAL);
+                    }
+                }
+
                 break;
             }
         }
@@ -213,7 +227,7 @@ int read_data(const Assembler *assembler, const Line *line) {
             }
 
             for (size_t i = 0; i < strlen(token)-1; i++) {
-                if (!isalnum(token[i])) {
+                if ( !( isalnum(token[i]) || token[i] == '_' || token[i] == '$' || token[i] == '.' ) ) {
                     raise_error(SYMBOL_INV, token, __FILE__);
                     free(argument);
                     return 0;
@@ -256,7 +270,7 @@ int read_data(const Assembler *assembler, const Line *line) {
                 // Save label(s) (after alignment)
                 if (labels[0][0] != '\0') {
                     for (size_t i = 0; i < label_count; i++) {
-                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_addr) == 0) {
+                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_offset, DATA, LOCAL) == 0) {
                             free(argument);
                             return 0;
                         }
@@ -274,7 +288,7 @@ int read_data(const Assembler *assembler, const Line *line) {
                 // Save label(s) (before adding space)
                 if (labels[0][0] != '\0') {
                     for (size_t i = 0; i < label_count; i++) {
-                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_addr) == 0) {
+                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_offset, DATA, LOCAL) == 0) {
                             free(argument);
                             return 0;
                         }
@@ -330,7 +344,7 @@ int read_data(const Assembler *assembler, const Line *line) {
                 // Write the label(s)
                 if (labels[0][0] != '\0') {
                     for (size_t i = 0; i < label_count; i++) {
-                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_addr) == 0) {
+                        if (st_add_symbol(assembler->symbol_table, labels[i], assembler->data_list->data_offset, DATA, LOCAL) == 0) {
                             free(argument);
                             return 0;
                         }
@@ -369,9 +383,9 @@ uint32_t convert_instruction(const Instruction instruction, const Assembler* ass
         case R:
             return convert_rtype(instruction, instruction_desc);
         case I:
-            return convert_itype(instruction, assembler->symbol_table, instruction_desc, current_addr);
+            return convert_itype(instruction, assembler->symbol_table, assembler->relocation_table, instruction_desc, current_addr);
         case J:
-            return convert_jtype(instruction, assembler->symbol_table, instruction_desc, current_addr);
+            return convert_jtype(instruction, assembler->symbol_table, assembler->relocation_table, instruction_desc, current_addr);
         default:
             raise_error(NOERR, NULL, __FILE__);
             return -1;
@@ -379,8 +393,8 @@ uint32_t convert_instruction(const Instruction instruction, const Assembler* ass
 }
 
 // Goes through every instruction and writes its 32-bit machine code to the file. Returns 0 on failure
-int write_instruction_list(FILE *file, const Assembler *assembler, const struct FileHeader *header) {
-    uint32_t current_addr = header->text_entry;
+int write_instruction_list(FILE *file, const Assembler *assembler) {
+    uint32_t current_addr = 0;
 
     for (size_t i = 0; i < assembler->instruction_list->len; i++) {
         const Instruction instruction = assembler->instruction_list->list[i];
@@ -406,24 +420,24 @@ int write_instruction_list(FILE *file, const Assembler *assembler, const struct 
 /* === SECOND PASS DATA SEGMENT === */
 
 // Writes a Data structure to the file
-int write_data(FILE *file, Data data, const SymbolTable *symbol_table) {
+int write_data(FILE *file, Data data, const SymbolTable *symbol_table, RelocationTable *relocation_table, const uint32_t current_offset) {
     if (data.isSymbol) {
-        const uint32_t target_address = st_get_symbol(symbol_table, data.value.symbol);
-        if (target_address == 0) return 0;
+
+        // Requires R_32 relocation
+        Symbol *s = st_get_symbol(symbol_table, data.value.symbol);
+        if (s == NULL) return 0;
+        RelocationEntry reloc;
+
         switch (data.type) {
-            case WORD:
-                data.value.word = (int32_t) target_address;
-                break;
-            case HALF:
-                data.value.half = (int16_t) (target_address & 0x0000FFFF);
-                break;
-            case BYTE:
-                data.value.byte = (int8_t) (target_address & 0x000000FF);
+            case WORD: // What happens with .byte and .half?
+                data.value.word = 0;
+                re_init(&reloc, current_offset, DATA, R_32, s->name);
                 break;
             default:
                 raise_error(ARGS_INV, NULL, __FILE__);
                 return 0;
         }
+        rt_add(relocation_table, reloc);
     }
 
     unsigned long success;
@@ -458,12 +472,14 @@ int write_data(FILE *file, Data data, const SymbolTable *symbol_table) {
 
 // Goes through every Data structure in the list and writes it to file. Returns 0 on failure or -1 on file IO failure.
 int write_data_list(FILE *file, Assembler *assembler) {
+    uint32_t current_offset = 0;
     for (size_t i = 0; i < assembler->data_list->len; i++) {
         const Data data = assembler->data_list->list[i];
         ERROR_HANDLER.line = data.line;
 
-        const int success = write_data(file, data, assembler->symbol_table);
+        const int success = write_data(file, data, assembler->symbol_table, assembler->relocation_table, current_offset);
         if (success <= 0) return success;
+        current_offset += data.size;
     }
     return 1;
 }
@@ -500,6 +516,28 @@ int assembler_first_pass(Assembler *assembler) {
                 current_segment = DATA;
                 continue;
             }
+            if (strcmp(directive, "globl") == 0) {
+                // Add all arguments to symbol table as global undefined symbols
+                char line_cpy[strlen(line->text)+1];
+                strcpy(line_cpy,line->text);
+                const char *token = tokenize(line_cpy, ' ');
+                token = tokenize(NULL, ' '); // tokenize again to skip the directive
+                if (token == NULL) {
+                    raise_error(ARGS_INV, NULL, __FILE__);
+                    return 0;
+                }
+                while (token != NULL) {
+                    const unsigned long index = st_exists(assembler->symbol_table, token);
+                    if (index == SYMBOL_TABLE_SIZE) { // symbol does not exist
+                        st_add_symbol(assembler->symbol_table, token, 0, UNDEF, GLOBAL);
+                    } else { // symbol exists; make global
+                        assembler->symbol_table->buckets[index].item.binding = GLOBAL;
+                    }
+
+                    token = tokenize(NULL, ' ');
+                }
+                continue;
+            }
             if (current_segment != DATA) { // Any other directive must be in the data segment
                 raise_error(TOKEN_ERR, directive, __FILE__);
                 return 0;
@@ -514,7 +552,7 @@ int assembler_first_pass(Assembler *assembler) {
         }
 
         // DATA
-        else {
+        else if (current_segment == DATA){
             if (read_data(assembler, line) == 0) {
                 return 0;
             }
@@ -538,14 +576,13 @@ int assembler_second_pass(Assembler *assembler, const char *output) {
 
     // === Write Header ===
     struct FileHeader header;
-    header.text_entry = TEXT_ENTRY;
-    header.data_entry = DATA_ENTRY;
-    header.text_size = assembler->instruction_list->text_addr - TEXT_ENTRY;
-    header.data_size = assembler->data_list->data_addr - DATA_ENTRY;
+    header.text_size = assembler->instruction_list->text_offset;
+    header.data_size = assembler->data_list->data_offset;
+    header.entry = TEXT_START;
     fwrite(&header, sizeof(header), 1, file);
 
     // === Write Instructions ===
-    int success = write_instruction_list(file, assembler, &header);
+    int success = write_instruction_list(file, assembler);
     if (success == 0) {
         if (ERROR_HANDLER.err_code == FILE_IO) {
             raise_error(FILE_IO, output, __FILE__);
@@ -553,8 +590,29 @@ int assembler_second_pass(Assembler *assembler, const char *output) {
         fclose(file);
         return 0;
     }
+
     // == Write Data ===
     success = write_data_list(file, assembler);
+    if (success == 0) {
+        if (ERROR_HANDLER.err_code == FILE_IO) {
+            raise_error(FILE_IO, output, __FILE__);
+        }
+        fclose(file);
+        return 0;
+    }
+
+    // === Write Relocation Table ===
+    success = write_reloc_table(file, assembler->relocation_table);
+    if (success == 0) {
+        if (ERROR_HANDLER.err_code == FILE_IO) {
+            raise_error(FILE_IO, output, __FILE__);
+        }
+        fclose(file);
+        return 0;
+    }
+
+    // === Write Symbol Table
+    success = write_symbol_table(file, assembler->symbol_table);
     if (success == 0) {
         if (ERROR_HANDLER.err_code == FILE_IO) {
             raise_error(FILE_IO, output, __FILE__);
@@ -580,7 +638,15 @@ int assemble(const Text *preprocessed, const char *output) {
         return 0;
     }
 
-    // assembler_debug(&assembler);
+    // Check for undefined local symbols and make global
+    // This behavior essentially automatically imports any undefined symbol
+    for (int i = 0; i < SYMBOL_TABLE_SIZE; i++) {
+        if (assembler.symbol_table->buckets[i].inUse) {
+            if (assembler.symbol_table->buckets[i].item.segment == UNDEF) {
+                assembler.symbol_table->buckets[i].item.binding = GLOBAL;
+            }
+        }
+    }
 
     if (assembler_second_pass(&assembler, output) == 0) {
         assembler_destroy(&assembler);
@@ -614,7 +680,7 @@ int assembler_init(Assembler *assembler, const Text *preprocessed) {
         raise_error(MEM, NULL, __FILE__);
         return 0;
     }
-    if (il_init(instruction_list, TEXT_ENTRY) == 0) return 0;
+    if (il_init(instruction_list, 0) == 0) return 0;
     assembler->instruction_list = instruction_list;
 
     // Initialize data list
@@ -623,7 +689,7 @@ int assembler_init(Assembler *assembler, const Text *preprocessed) {
         raise_error(MEM, NULL, __FILE__);
         return 0;
     }
-    if (dl_init(data_list, DATA_ENTRY) == 0) return 0;
+    if (dl_init(data_list, 0) == 0) return 0;
     assembler->data_list = data_list;
 
     // Initialize instruction table
@@ -634,6 +700,15 @@ int assembler_init(Assembler *assembler, const Text *preprocessed) {
     }
     if (it_create(instruction_table) == 0) return 0;
     assembler->instruction_table = instruction_table;
+
+    // Initialize relocation table
+    RelocationTable *relocation_table = malloc(sizeof(RelocationTable));
+    if (relocation_table == NULL) {
+        raise_error(MEM, NULL, __FILE__);
+        return 0;
+    }
+    if (rt_init(relocation_table) == 0) return 0;
+    assembler->relocation_table = relocation_table;
 
     return 1;
 }
@@ -655,6 +730,9 @@ void assembler_destroy(Assembler *assembler) {
     if (assembler->instruction_table != NULL) {
         it_destroy(assembler->instruction_table);
     }
+    if (assembler->relocation_table != NULL) {
+        rt_destroy(assembler->relocation_table);
+    }
 }
 
 void assembler_debug(const Assembler *assembler) {
@@ -674,5 +752,11 @@ void assembler_debug(const Assembler *assembler) {
         il_debug(assembler->instruction_list);
     } else {
         printf("No instruction list found\n");
+    }
+
+    if (assembler->relocation_table != NULL) {
+        rt_debug(assembler->relocation_table);
+    } else {
+        printf("No relocation table found\n");
     }
 }

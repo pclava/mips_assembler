@@ -17,7 +17,7 @@ int il_init(InstructionList * instruction_list, uint32_t entry) {
         raise_error(MEM, NULL, __FILE__);
         return 0;
     }
-    instruction_list->text_addr = entry;
+    instruction_list->text_offset = entry;
     return 1;
 }
 
@@ -34,7 +34,7 @@ int add_instruction(InstructionList *instruction_list, const Instruction instr) 
 
     instruction_list->list[instruction_list->len] = instr;
     instruction_list->len++;
-    instruction_list->text_addr += 4;
+    instruction_list->text_offset += 4;
     return 1;
 }
 

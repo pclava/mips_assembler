@@ -92,6 +92,16 @@ int preprocess(FILE *inp, const char *path, Text *text) {
                     if (c == '\n') line_number++;
                 } while (isspace(c) && c != EOF);
                 if (c == EOF) break;
+                if (c == '#') {
+                    // skip until newline
+                    while (c != '\n') {
+                        if (c == EOF) break;
+                        c = fgetc(inp);
+                    }
+                    line_number++;
+                    c = fgetc(inp);
+                    if (c == EOF) break;
+                }
                 line_add_char(&line, (char) c);
                 prev = ' ';
                 continue;

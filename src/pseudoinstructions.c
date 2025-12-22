@@ -289,7 +289,7 @@ int move(const Instruction instruction, InstructionList* instructions) {
     // add $R1 $0 $R2
     Instruction i1;
     memset(i1.mnemonic, '\0', sizeof(i1.mnemonic));
-    strcpy(i1.mnemonic, "addi");
+    strcpy(i1.mnemonic, "add");
     i1.registers[0] = r1;
     i1.registers[1] = 0;
     i1.registers[2] = r2;

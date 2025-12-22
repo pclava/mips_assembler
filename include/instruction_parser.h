@@ -15,7 +15,7 @@ typedef struct {
 typedef struct {
     size_t len;
     size_t cap;
-    uint32_t text_addr;
+    uint32_t text_offset;
     Instruction *list;
 } InstructionList;
 

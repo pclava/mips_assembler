@@ -2,10 +2,10 @@
 
 .data
 str: .asciiz "Hello, World!\n"
-num: .word 16
+num: .word 245
 
 .text
-la $t0 str
+la $t0 num
 lw $s0 0($t0)
 
 la $a0 str

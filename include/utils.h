@@ -9,17 +9,31 @@
 #define MAX_6U 63
 #define SYMBOL_SIZE 32
 #define MNEMONIC_LENGTH 10
-#define TEXT_ENTRY 0x00400000
-#define DATA_ENTRY 0x10010000
+
+#define TEXT_START 0x00400000
+#define DATA_START 0x10010000
+
+enum Segment { TEXT, DATA, UNDEF };
+
+enum Binding { LOCAL, GLOBAL };
+
+enum RelocType {
+    R_32,
+    R_26,
+    R_PC16,
+    R_HI16,
+    R_LO16
+};
 
 #define REGISTER_COUNT 32
 extern const char *REGISTERS[REGISTER_COUNT];
 
+// Used by both object and executable files
 struct FileHeader {
-    uint32_t text_entry;
-    uint32_t data_entry;
-    uint32_t text_size;
-    uint32_t data_size;
+    uint32_t text_size; // Text segment, in bytes
+    uint32_t data_size; // Data segment, in bytes
+    // Note that the size of the relocation table and symbol tables are not in the main header but the start of their respective sections
+    uint32_t entry;     // Used by executable
 };
 
 /* === FILE I/O === */

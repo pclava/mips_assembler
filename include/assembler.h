@@ -4,12 +4,10 @@
 #include "symbol_table.h"
 #include "instruction_parser.h"
 #include "instructions.h"
+#include "reloc_table.h"
 #include "data_parser.h"
 
 /* === TYPES === */
-
-enum Segment { TEXT, DATA };
-
 
 typedef struct {
     const Text *preprocessed;
@@ -17,6 +15,7 @@ typedef struct {
     InstructionList *instruction_list;
     SymbolTable *symbol_table;
     InstructionTable *instruction_table;
+    RelocationTable *relocation_table;
 } Assembler;
 
 /* === ASSEMBLER STRUCTURE METHODS === */

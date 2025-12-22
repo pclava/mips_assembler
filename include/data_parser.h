@@ -33,7 +33,7 @@ typedef struct {
 typedef struct {
     size_t len;
     size_t cap;
-    uint32_t data_addr;
+    uint32_t data_offset;
     Data *list;
 } DataList;
 
