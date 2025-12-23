@@ -7,13 +7,6 @@
 #include "linker.h"
 
 /*
- * ./mips_assembler a.out src1 src2 [...src_i]
- * ./mips_assembler -c src1 src2 [...src_i]
- *
- * First argument: either the path to the final executable, -c to assemble without linking, or -h for help
- */
-
-/*
  $ ./mips_assembler a.out src1 src2 [...src_i]            # assemble and link, linking _start.o and beginning execution there
  $ ./mips_assembler -c src1 src2 [...src_i]               # only assemble into object files
  $ ./mips_assembler -e. a.out src1 src2 [...src_i]        # -e. begins execution at the first instruction
@@ -22,6 +15,7 @@
 
 int main(int argc, char *argv[]) {
     int performLinking = 1;
+    int clean = 1;
     if (argc < 3) {
         fprintf(stderr, "error in %s: invalid arguments\n", __FILE__);
         return 1;
@@ -119,6 +113,7 @@ int main(int argc, char *argv[]) {
     }
 
     for (int i = 0; i < file_count; i++) {
+        if (performLinking && clean) remove(object_files[i]);
         free(object_files[i]);
     }
 
