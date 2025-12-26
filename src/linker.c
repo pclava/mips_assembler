@@ -251,8 +251,8 @@ int link(const char *out_path, char *object_files[], int file_count, const char 
             data_offset = 0;
         }
         else {
-            text_offset = source_files[file_index - 1].text_size;
-            data_offset = source_files[file_index - 1].data_size;
+            text_offset = final_header.text_size;
+            data_offset = final_header.data_size;
         }
         // Open file
         struct FileHeader header;
@@ -278,10 +278,12 @@ int link(const char *out_path, char *object_files[], int file_count, const char 
     if (entry_symbol != NULL && strcmp(entry_symbol, "_start") == 0) {
         link_start = 1;
         struct FileHeader header;
+        const uint32_t text_offset = final_header.text_size;
+        const uint32_t data_offset = final_header.data_size;
         FILE *f = open_object_file("_start.o", &final_header, &header);
         if (f == NULL) goto _link_failed;
 
-        file_init(&start, source_files[file_count-1].text_size, source_files[file_count-1].data_size, header.text_size, header.data_size);
+        file_init(&start, text_offset, data_offset, header.text_size, header.data_size);
         load_file(f, &start, &header, &global_symbols);
         fclose(f);
     }
