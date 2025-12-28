@@ -30,7 +30,7 @@ Object files have the following format:
   - ...
 ```
 
-The particular details of the MIPS instruction set were sourced from _MIPS Assembly Language Programmer's Guide_ (Silicon Graphics, 1992). 
+The particular details of the MIPS instruction set were sourced from _MIPS Assembly Language Programmer's Guide_ (Silicon Graphics, 1992), and _MIPS® Architecture for Programmers Volume II-A: The MIPS32® Instruction Set Manual_ (MIPS Technologies, 2016).
 Some example assembly files and their outputs can be found in `examples/`.
 
 ## Usage
@@ -63,13 +63,7 @@ assembles `_start.asm` into `_start.o`.
 assembles and links `functs.asm`, `fibonacci.asm`, and `_start.o`, writing the result to `fibonacci.out`.
 
 ## Support
-The assembler does not support the entire MIPS instruction set. Namely, it does not support:
-- all floating point instructions
-- lbu, lhu
-- lb, ll
-- mcf0
-- sc
-- the following directives: double, extern, float, kdata, ktext
+The assembler does not support the entire MIPS instruction set. The list of instructions the assembler supports is in `src/instructions.c`.
 
 It does support the following pseudoinstructions:
 - bgt, blt, bge, ble
@@ -79,6 +73,7 @@ It does support the following pseudoinstructions:
   
 ---
 Every line of code in this repository was written by a human.
+
 
 
 
