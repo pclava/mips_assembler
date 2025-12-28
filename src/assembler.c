@@ -648,6 +648,8 @@ int assemble(const Text *preprocessed, const char *output) {
         }
     }
 
+    // st_debug(assembler.symbol_table);
+
     if (assembler_second_pass(&assembler, output) == 0) {
         assembler_destroy(&assembler);
         return 0;

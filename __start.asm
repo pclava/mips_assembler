@@ -3,11 +3,11 @@
 
 .text
 
-.globl _start
-_start:
+.globl __start
+__start:
 jal main
-jal _exit
+jal __exit
 
-_exit:
+__exit:
 li $v0 10
 syscall

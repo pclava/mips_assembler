@@ -199,7 +199,12 @@ int file_relocation(const SourceFile *source, const SymbolTable *global_symbols)
                     return 0;
                 }
                 dependency = st_get_symbol(global_symbols, entry.dependency);
-                if (dependency == NULL) return 0;
+                if (dependency == NULL) {
+                    if (strcmp(entry.dependency, "main") == 0) {
+                        fprintf(stderr, "Could not find symbol 'main'. Have you exported it with .globl?\n");
+                    }
+                    return 0;
+                }
                 final_address = dependency->offset;
                 break;
             default:
@@ -272,15 +277,15 @@ int link(const char *out_path, char *object_files[], int file_count, const char 
         fclose(f);
     }
 
-    // If entry is _start, link _start.o
+    // If entry is __start, link __start.o
     SourceFile start;
     int link_start = 0;
-    if (entry_symbol != NULL && strcmp(entry_symbol, "_start") == 0) {
+    if (entry_symbol != NULL && strcmp(entry_symbol, "__start") == 0) {
         link_start = 1;
         struct FileHeader header;
         const uint32_t text_offset = final_header.text_size;
         const uint32_t data_offset = final_header.data_size;
-        FILE *f = open_object_file("_start.o", &final_header, &header);
+        FILE *f = open_object_file("__start.o", &final_header, &header);
         if (f == NULL) goto _link_failed;
 
         file_init(&start, text_offset, data_offset, header.text_size, header.data_size);

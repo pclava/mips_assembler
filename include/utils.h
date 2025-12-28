@@ -113,7 +113,14 @@ unsigned long hash_key(const char *key, size_t table_size);
 enum ImmType {
     SYMBOL,
     NUM,
-    NONE
+
+    // when first pass sees a base offset address of the form IMM(REG),
+    // it saves it as a symbol and the second pass later parses it
+    // when parse_imm sees a parenthesis, it assumes it is a reg_offset
+    // i know this is a terrible solution
+    REG_OFFSET,
+
+    NONE,
 };
 
 typedef struct {

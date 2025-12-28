@@ -69,7 +69,6 @@ int preprocess(FILE *inp, const char *path, Text *text) {
                     line_init(&line, path); // Reset line
                     line.number = line_number;
                     prev = '\0'; // Reset prev
-
                 }
 
                 // Read until next line
@@ -78,32 +77,38 @@ int preprocess(FILE *inp, const char *path, Text *text) {
                 } while (c != EOF && c != '\n');
                 if (c == EOF) break;
                 line_number++;
+                line.number++;
 
                 continue;
             }
 
             // Labels should be moved to the next line with text
             else if (c == ':') {
+                // skip over whitespace and comments until an instruction is found
                 line_add_char(&line, (char) c);
                 line_add_char(&line, ' ');
-                // Skip until we find a non-space
-                do {
-                    c = fgetc(inp);
-                    if (c == '\n') line_number++;
-                } while (isspace(c) && c != EOF);
-                if (c == EOF) break;
-                if (c == '#') {
-                    // skip until newline
-                    while (c != '\n') {
-                        if (c == EOF) break;
-                        c = fgetc(inp);
-                    }
-                    line_number++;
-                    c = fgetc(inp);
-                    if (c == EOF) break;
-                }
-                line_add_char(&line, (char) c);
                 prev = ' ';
+                c = fgetc(inp);
+                while (isspace(c) || c == '#') {
+                    if (c == '\n') {
+                        line_number++; // increment both number counter and line's number
+                        line.number++; // because line's number was the start of the label
+                    }
+                    else if (c == '#') {
+                        // Loop until end of line
+                        while (c != '\n' && c != EOF) {
+                            c = fgetc(inp);
+                        }
+                        if (c == EOF) break;
+                        line.number++;
+                        line_number++;
+                    }
+                    else if (c == EOF) break;
+                    c = fgetc(inp);
+                }
+                if (c == EOF) break;
+                line_add_char(&line, (char) c);
+
                 continue;
             }
 

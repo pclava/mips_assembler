@@ -77,7 +77,7 @@ Immediate parse_imm(const char * str) {
         if (*endptr == '(') {
             // Register-relative address
             // Second pass will catch further errors
-            imm.type = SYMBOL;
+            imm.type = REG_OFFSET;
             strcpy(imm.symbol, str);
             return imm;
         }
