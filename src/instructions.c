@@ -244,7 +244,7 @@ uint32_t convert_itype(const Instruction instruction, SymbolTable *symbol_table,
 
      * conditional branches: opcodes 0x4 and 0x5
      * traditional operations (i.e. rt = f(rs)): opcodes 0x8 - 0xF
-     * memory instructions: opcodes 0x23 - 0x30
+     * memory instructions: opcodes 0x20 - 0x30
      The immediates for these instructions are handled differently.
     */
 
@@ -323,7 +323,7 @@ uint32_t convert_itype(const Instruction instruction, SymbolTable *symbol_table,
         // Convert to unsigned 32-bits
         imm = (uint32_t) signed_immediate & 0x0000FFFF;
     }
-    else if (opcode >= 35 && opcode <= 43) { // Memory instruction
+    else if (opcode >= 32 && opcode <= 43) { // Memory instruction
         // Get rs and immediate from instruction.immediate
         // Address is in the form imm(rs) or (rs), i.e., 0x542($t2). If no number given, 0 is used
 
