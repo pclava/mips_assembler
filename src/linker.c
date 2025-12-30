@@ -107,7 +107,7 @@ int relocate(SourceFile file, RelocationEntry entry, uint32_t final_address) {
                 fprintf(stderr, "Error linking %s: branch target out of range\n", file.name);
                 return 0;
             }
-            file.text[instr_offset] |= (int16_t) dist;
+            file.text[instr_offset] |= (uint16_t) dist;
             return 1;
         case R_HI16:
             if (entry.segment != TEXT) {

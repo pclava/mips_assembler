@@ -129,7 +129,7 @@ typedef struct {
         int32_t intValue;
         char symbol[SYMBOL_SIZE];
     };
-    unsigned char modifier; // 0 = none, 1 = hi, 2 = lo, 255 = failure to parse
+    unsigned char modifier; // 0 = none, 1 = hi, 2 = lo, 254 = macro argument, 255 = failure to parse
 } Immediate;
 
 // Parses the string into an Immediate structure
