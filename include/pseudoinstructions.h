@@ -39,19 +39,7 @@ Line *define_macro(Macro *macro, const Line *line);
 
 int insert_macro(Text *text_list, const MacroTable *table, const char *name, Line *line);
 
-int blt(Instruction, InstructionList*);
-int bgt(Instruction, InstructionList*);
-int ble(Instruction, InstructionList*);
-int bge(Instruction, InstructionList*);
 int li(Instruction, InstructionList*);
 int la(Instruction, InstructionList*);
-int move(Instruction, InstructionList*);
-
-extern const size_t PSEUDOINSTRUCTIONS_COUNT;
-extern const char *PSEUDOINSTRUCTIONS[7];
-
-extern int (*PSEUDOINSTRUCTIONS_FUNCTS[7])(Instruction, InstructionList *);
-
-int process_pseudo(Instruction instruction, InstructionList *instruction_list);
 
 #endif //MIPS_ASSEMBLER_PSEUDOINSTRUCTIONS_H

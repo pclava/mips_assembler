@@ -85,7 +85,8 @@ int parse_instruction(const Assembler *assembler, Line *line, Instruction *instr
 
             // === CHECK IF MACRO ===
             if (mt_exists(assembler->macro_table, token) != MACRO_TABLE_LENGTH) {
-                return insert_macro(assembler->preprocessed, assembler->macro_table, token, line);
+                if (insert_macro(assembler->preprocessed, assembler->macro_table, token, line) == 0) return 0;
+                return 2;
             }
 
             strcpy(instruction->mnemonic, token);
@@ -157,31 +158,37 @@ int parse_instruction(const Assembler *assembler, Line *line, Instruction *instr
     return 1;
 }
 
-// Adds Instruction to InstructionList. Converts pseudoinstructions if needed.
+// Adds Instruction to InstructionList, and converts special instructions
 int process_instruction(const Instruction instruction, InstructionList *instruction_list) {
 
-    // Replace pseudo-instructions
-    const int s = process_pseudo(instruction, instruction_list); // Number of instructions written
-    if (s == -1) {
-        return 0;
-    } // Processing failed
-
-    if (s == 0) { // Instruction was not a pseudoinstruction
-        if (add_instruction(instruction_list, instruction) == 0) return 0; // add instruction
+    // Check special cases: `la` (load address) and `li` (load immediate)
+    // necessary because assembler currently doesn't support %hi and %lo
+    if (strcmp(instruction.mnemonic, "la") == 0) {
+        if (la(instruction, instruction_list) == -1) {
+            return 0;
+        }
+        return 1;
+    }
+    if (strcmp(instruction.mnemonic, "li") == 0) {
+        if (li(instruction, instruction_list) == -1) {
+            return 0;
+        }
         return 1;
     }
 
-    // Instruction was a pseudoinstruction
-    return 1;
+    return add_instruction(instruction_list, instruction);
+
 }
 
 // Parses and processes a Line containing an instruction.
 int read_text(const Assembler *assembler, Line *line) {
 
     Instruction instruction;
-    if (parse_instruction(assembler, line, &instruction) == 0) {
+    int success = parse_instruction(assembler, line, &instruction);
+    if (success == 0) {
         return 0;
     }
+    if (success == 2) return 1;
     instruction.line = line;
 
     // Add to instruction list
@@ -669,6 +676,7 @@ int assemble(Text *preprocessed, const char *output) {
     }
 
     // st_debug(assembler.symbol_table);
+    il_debug(assembler.instruction_list);
 
     if (assembler_second_pass(&assembler, output) == 0) {
         assembler_destroy(&assembler);

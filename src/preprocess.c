@@ -22,7 +22,7 @@ FILE * open_file(const char *path) {
 }
 
 // Preprocesses the contents of 'inp', writes the result to the Text structure
-int preprocess(FILE *inp, const char *path, Text *text) {
+int preprocess_file(FILE *inp, const char *path, Text *text) {
     int c;
     int prev = '\0';
 
@@ -135,5 +135,15 @@ int preprocess(FILE *inp, const char *path, Text *text) {
     }
 
     fclose(inp);
+    return 1;
+}
+
+// Preprocesses pseudo.asm, followed by the input file
+int preprocess(FILE *inp, const char *path, Text *text) {
+    FILE *pseudo = fopen("src/pseudo.asm", "r");
+    if (preprocess_file(pseudo, "src/pseudo.asm", text) == 0) return 0;
+
+    if (preprocess_file(inp, path, text) == 0) return 0;
+
     return 1;
 }

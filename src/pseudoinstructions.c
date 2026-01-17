@@ -1,4 +1,7 @@
 #include "pseudoinstructions.h"
+
+#include <ctype.h>
+
 #include "instruction_parser.h"
 #include "utils.h"
 #include <limits.h>
@@ -114,6 +117,13 @@ Line *define_macro(Macro *macro, const Line *line) {
         return NULL;
     }
     strcpy(macro->name, token);
+    // Ensure name (and later arguments) are wholly alphanum
+    for (size_t i = 0; i < strlen(macro->name); i++) {
+        if (!isalnum(macro->name[i])) {
+            raise_error(SYMBOL_INV, macro->name, __FILE__);
+            return NULL;
+        }
+    }
 
     // Get argument names (up to 32 arguments should be plenty)
     token = tokenize(NULL, ' ');
@@ -127,6 +137,12 @@ Line *define_macro(Macro *macro, const Line *line) {
         }
 
         strcpy(macro->args[argc++], token);
+        for (size_t i = 1; i < strlen(macro->args[argc-1]); i++) {
+            if (!isalnum(macro->args[argc-1][i])) {
+                raise_error(SYMBOL_INV, macro->args[argc-1], __FILE__);
+                return NULL;
+            }
+        }
 
         token = tokenize(NULL, ' ');
     }
@@ -197,8 +213,7 @@ int insert_macro(Text *text_list, const MacroTable *table, const char *name, Lin
 
     // Translate and insert macro
     Line *new_line = macro->definition_start;
-    Line *before = line->prev;
-    Line old_line = text_remove(text_list, line);
+    Line *before = line;
     for (size_t i = 0; i < macro->definition_length; i++) {
         // For each line in the definition
         // Initialize a new line
@@ -206,7 +221,8 @@ int insert_macro(Text *text_list, const MacroTable *table, const char *name, Lin
 
         // Initialize new line
         Line to_insert;
-        line_init(&to_insert, old_line.filename);
+        line_init(&to_insert, line->filename);
+        to_insert.number = line->number;
 
         // Read definition line
         char c;
@@ -216,6 +232,7 @@ int insert_macro(Text *text_list, const MacroTable *table, const char *name, Lin
 
             // If percent
             if (c == '%') {
+
                 // Get argument name
                 char argbuf[SYMBOL_SIZE];
                 memset(argbuf, '\0', sizeof(argbuf));
@@ -227,7 +244,7 @@ int insert_macro(Text *text_list, const MacroTable *table, const char *name, Lin
                         end_char = '\0';
                         break;
                     }
-                    argbuf[j] = c;
+                    argbuf[j++] = c;
                 }
 
                 // Find index in macro->args
@@ -262,164 +279,6 @@ int insert_macro(Text *text_list, const MacroTable *table, const char *name, Lin
 
     text_debug(text_list);
     return 1;
-}
-
-#define PSEUDOINSTRUCTIONS_COUNT 7
-const char *PSEUDOINSTRUCTIONS[PSEUDOINSTRUCTIONS_COUNT] = {
-    "blt", "bgt", "ble", "bge", "li", "la", "move"
-};
-
-// Take an Instruction struct and write the 1 or 2 translated instructions to the InstructionList
-// Return number of instructions successfully written on success, otherwise 0
-int (*PSEUDOINSTRUCTIONS_FUNCTS[PSEUDOINSTRUCTIONS_COUNT])(Instruction, InstructionList *) = {
-    &blt, &bgt, &ble, &bge, &li, &la, &move
-};
-
-// Find the corresponding function for the pseudoinstruction. Returns the number of instructions written, or -1 on failure
-int process_pseudo(const Instruction instruction, InstructionList *instruction_list) {
-
-    // find corresponding pseudoinstruction and call that function
-    for (int i = 0; i < PSEUDOINSTRUCTIONS_COUNT; i++) {
-        if (strcmp(instruction.mnemonic, PSEUDOINSTRUCTIONS[i]) == 0) {
-            const int s = PSEUDOINSTRUCTIONS_FUNCTS[i](instruction, instruction_list);
-            if (s == 0) return -1;
-            return s;
-        }
-    }
-
-    return 0; // no instructions were written; instr isn't pseudo
-}
-
-int blt(const Instruction instruction, InstructionList* instructions) {
-    const unsigned char r1 = instruction.registers[0];
-    const unsigned char r2 = instruction.registers[1];
-    if (instruction.registers[2] != 255 || instruction.imm.type != SYMBOL) {
-        raise_error(ARGS_INV, NULL, __FILE__);
-        return 0;
-    }
-
-    Instruction i1;
-    memset(i1.mnemonic, '\0', sizeof(i1.mnemonic));
-    const Immediate i1imm = {.type=NONE, .intValue=0, .modifier=0};
-    i1.imm = i1imm;
-    Instruction i2;
-    memset(i2.mnemonic, '\0', sizeof(i2.mnemonic));
-
-    strcpy(i1.mnemonic, "slt");
-    i1.registers[0] = 1;
-    i1.registers[1] = r1;
-    i1.registers[2] = r2;
-    i1.line = instruction.line;
-    if (add_instruction(instructions, i1) == 0) return 0;
-
-    strcpy(i2.mnemonic, "bne");
-    i2.registers[0] = 1;
-    i2.registers[1] = 0;
-    i2.registers[2] = 255;
-    i2.imm = instruction.imm;
-    i2.line = instruction.line;
-    if (add_instruction(instructions, i2) == 0) return 0;
-
-    return 2;
-}
-
-int bgt(const Instruction instruction, InstructionList* instructions) {
-    const unsigned char r1 = instruction.registers[0];
-    const unsigned char r2 = instruction.registers[1];
-    if (instruction.registers[2] != 255 || instruction.imm.type != SYMBOL) {
-        raise_error(ARGS_INV, NULL, __FILE__);
-        return 0;
-    }
-
-    Instruction i1;
-    memset(i1.mnemonic, '\0', sizeof(i1.mnemonic));
-    const Immediate i1imm = {.type=NONE, .intValue=0, .modifier=0};
-    i1.imm = i1imm;
-    Instruction i2;
-    memset(i2.mnemonic, '\0', sizeof(i2.mnemonic));
-
-    strcpy(i1.mnemonic, "slt");
-    i1.registers[0] = 1;
-    i1.registers[1] = r2;
-    i1.registers[2] = r1;
-    i1.line = instruction.line;
-    if (add_instruction(instructions, i1) == 0) return 0;
-
-    strcpy(i2.mnemonic, "bne");
-    i2.registers[0] = 1;
-    i2.registers[1] = 0;
-    i2.registers[2] = 255;
-    i2.imm = instruction.imm;
-    i2.line = instruction.line;
-    if (add_instruction(instructions, i2) == 0) return 0;
-
-    return 2;
-}
-
-int ble(const Instruction instruction, InstructionList* instructions) {
-    const unsigned char r1 = instruction.registers[0];
-    const unsigned char r2 = instruction.registers[1];
-    if (instruction.registers[2] != 255 || instruction.imm.type != SYMBOL) {
-        raise_error(ARGS_INV, NULL, __FILE__);
-        return 0;
-    }
-
-    Instruction i1;
-    memset(i1.mnemonic, '\0', sizeof(i1.mnemonic));
-    const Immediate i1imm = {.type=NONE, .intValue=0, .modifier=0};
-    i1.imm = i1imm;
-    Instruction i2;
-    memset(i2.mnemonic, '\0', sizeof(i2.mnemonic));
-
-    strcpy(i1.mnemonic, "slt");
-    i1.registers[0] = 1;
-    i1.registers[1] = r2;
-    i1.registers[2] = r1;
-    i1.line = instruction.line;
-    if (add_instruction(instructions, i1) == 0) return 0;
-
-    strcpy(i2.mnemonic, "beq");
-    i2.registers[0] = 1;
-    i2.registers[1] = 0;
-    i2.registers[2] = 255;
-    i2.imm = instruction.imm;
-    i2.line = instruction.line;
-    if (add_instruction(instructions, i2) == 0) return 0;
-
-    return 2;
-}
-
-int bge(const Instruction instruction, InstructionList* instructions) {
-    const unsigned char r1 = instruction.registers[0];
-    const unsigned char r2 = instruction.registers[1];
-    if (instruction.registers[2] != 255 || instruction.imm.type != SYMBOL) {
-        raise_error(ARGS_INV, NULL, __FILE__);
-        return 0;
-    }
-
-    Instruction i1;
-    memset(i1.mnemonic, '\0', sizeof(i1.mnemonic));
-    const Immediate i1imm = {.type=NONE, .intValue=0, .modifier=0};
-    i1.imm = i1imm;
-    Instruction i2;
-    memset(i2.mnemonic, '\0', sizeof(i2.mnemonic));
-
-    strcpy(i1.mnemonic, "slt");
-    i1.registers[0] = 1;
-    i1.registers[1] = r1;
-    i1.registers[2] = r2;
-    i1.line = instruction.line;
-    if (add_instruction(instructions, i1) == 0) return 0;
-
-    strcpy(i2.mnemonic, "beq");
-    i2.registers[0] = 1;
-    i2.registers[1] = 0;
-    i2.registers[2] = 255;
-    i2.imm = instruction.imm;
-    i2.line = instruction.line;
-    if (add_instruction(instructions, i2) == 0) return 0;
-
-    return 2;
 }
 
 int li(const Instruction instruction, InstructionList* instructions) {
@@ -527,31 +386,4 @@ int la(const Instruction instruction, InstructionList* instructions) {
         return 0;
     }
     return 2;
-}
-
-int move(const Instruction instruction, InstructionList* instructions) {
-    // move $R1 $R2
-    const unsigned char r1 = instruction.registers[0];
-    const unsigned char r2 = instruction.registers[1];
-
-    if (instruction.registers[2] != 255 && instruction.imm.type != NONE) {
-        raise_error(ARGS_INV, NULL, __FILE__);
-        return 0;
-    }
-
-    // addu $R1 $0 $R2
-    Instruction i1;
-    memset(i1.mnemonic, '\0', sizeof(i1.mnemonic));
-    strcpy(i1.mnemonic, "addu");
-    i1.registers[0] = r1;
-    i1.registers[1] = 0;
-    i1.registers[2] = r2;
-    i1.imm = instruction.imm;
-    i1.line = instruction.line;
-
-    if (add_instruction(instructions, i1) == 0) {
-        return 0;
-    }
-
-    return 1;
 }

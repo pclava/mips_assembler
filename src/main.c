@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    char *object_files[file_count];
+    char *object_files[file_count+1];
 
     // Assemble each source file
     for (int i = argc-file_count; i < argc; i++) {
