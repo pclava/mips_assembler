@@ -22,7 +22,7 @@ FILE * open_file(const char *path) {
 }
 
 // Preprocesses the contents of 'inp', writes the result to the Text structure
-int preprocess(FILE *inp, const char *path, Text *text) {
+int preprocess_file(FILE *inp, const char *path, Text *text) {
     int c;
     int prev = '\0';
 
@@ -43,7 +43,7 @@ int preprocess(FILE *inp, const char *path, Text *text) {
             } // Skip if empty line
             if (isspace(prev)) line.text[line.len-1] = '\0'; // overwrite trailing space
             else line_add_char(&line, '\0'); // otherwise append null terminator
-            text_add_line(text, line);
+            text_add(text, line);
             line_init(&line, path); // Reset line
             line.number = line_number;
             prev = '\0'; // Reset prev
@@ -65,11 +65,10 @@ int preprocess(FILE *inp, const char *path, Text *text) {
                 if (prev != '\0') { // Add the line
                     if (isspace(prev)) line.text[line.len-1] = '\0'; // overwrite trailing space
                     else line_add_char(&line, '\0'); // otherwise append null terminator
-                    text_add_line(text, line);
+                    text_add(text, line);
                     line_init(&line, path); // Reset line
                     line.number = line_number;
                     prev = '\0'; // Reset prev
-
                 }
 
                 // Read until next line
@@ -78,32 +77,38 @@ int preprocess(FILE *inp, const char *path, Text *text) {
                 } while (c != EOF && c != '\n');
                 if (c == EOF) break;
                 line_number++;
+                line.number++;
 
                 continue;
             }
 
             // Labels should be moved to the next line with text
             else if (c == ':') {
+                // skip over whitespace and comments until an instruction is found
                 line_add_char(&line, (char) c);
                 line_add_char(&line, ' ');
-                // Skip until we find a non-space
-                do {
-                    c = fgetc(inp);
-                    if (c == '\n') line_number++;
-                } while (isspace(c) && c != EOF);
-                if (c == EOF) break;
-                if (c == '#') {
-                    // skip until newline
-                    while (c != '\n') {
-                        if (c == EOF) break;
-                        c = fgetc(inp);
-                    }
-                    line_number++;
-                    c = fgetc(inp);
-                    if (c == EOF) break;
-                }
-                line_add_char(&line, (char) c);
                 prev = ' ';
+                c = fgetc(inp);
+                while (isspace(c) || c == '#') {
+                    if (c == '\n') {
+                        line_number++; // increment both number counter and line's number
+                        line.number++; // because line's number was the start of the label
+                    }
+                    else if (c == '#') {
+                        // Loop until end of line
+                        while (c != '\n' && c != EOF) {
+                            c = fgetc(inp);
+                        }
+                        if (c == EOF) break;
+                        line.number++;
+                        line_number++;
+                    }
+                    else if (c == EOF) break;
+                    c = fgetc(inp);
+                }
+                if (c == EOF) break;
+                line_add_char(&line, (char) c);
+
                 continue;
             }
 
@@ -126,9 +131,19 @@ int preprocess(FILE *inp, const char *path, Text *text) {
     // Add last line
     if (prev != '\0') {
         line_add_char(&line, '\0');
-        text_add_line(text, line);
+        text_add(text, line);
     }
 
     fclose(inp);
+    return 1;
+}
+
+// Preprocesses pseudo.asm, followed by the input file
+int preprocess(FILE *inp, const char *path, Text *text) {
+    FILE *pseudo = fopen("src/pseudo.asm", "r");
+    if (preprocess_file(pseudo, "src/pseudo.asm", text) == 0) return 0;
+
+    if (preprocess_file(inp, path, text) == 0) return 0;
+
     return 1;
 }

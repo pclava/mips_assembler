@@ -10,12 +10,15 @@ typedef struct {
     char *text;
     unsigned int number;
     char *filename;
+
+    void *next;
+    void *prev;
 } Line;
 
 typedef struct {
-    Line *items;
+    Line *head;
+    Line *tail;
     unsigned int len;
-    unsigned int cap;
 } Text;
 
 /* === METHODS === */
@@ -28,7 +31,11 @@ void line_destroy(Line *line);
 
 int text_init(Text *text);
 
-int text_add_line(Text *text, Line line);
+int text_add(Text *text, Line line);
+
+Line * text_insert(Text *text, Line line, Line *before);
+
+Line text_remove(Text *text, Line *line);
 
 void text_destroy(const Text *text);
 

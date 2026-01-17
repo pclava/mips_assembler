@@ -3,11 +3,14 @@
 
 .text
 
-.globl _start
-_start:
+.globl __start
+__start:
+# main(argc, argv)
+lw $a0 0($sp)   # argc
+addiu $a1 $sp 4 # argv
 jal main
-jal _exit
+jal __exit
 
-_exit:
+__exit:
 li $v0 10
 syscall

@@ -29,14 +29,15 @@ enum DataType CURRENT_DIRECTIVE = WORD; // Keeps track of the type of data item 
 /* === FIRST PASS TEXT SEGMENT === */
 
 // Parses a string into an Instruction. Does most of the heavy-lifting for this part of the assembler.
-int parse_instruction(const Assembler *assembler, const char *line, Instruction *instruction) {
+int parse_instruction(const Assembler *assembler, Line *line, Instruction *instruction) {
+    const char *line_text = line->text;
     memset(instruction->mnemonic, '\0', sizeof(instruction->mnemonic));
 
     const Immediate imm = {NONE, .intValue=0, .modifier=0};
     instruction->imm = imm;
 
-    char line_buf[strlen(line) + 1]; // Tokenize a copy so we preserve original string
-    strcpy(line_buf, line);
+    char line_buf[strlen(line_text) + 1]; // Tokenize a copy so we preserve original string
+    strcpy(line_buf, line_text);
 
     char *token = tokenize(line_buf, ' ');
     int argc = 0;
@@ -81,6 +82,13 @@ int parse_instruction(const Assembler *assembler, const char *line, Instruction 
                 raise_error(SIZE_ERR, token, __FILE__);
                 return 0;
             }
+
+            // === CHECK IF MACRO ===
+            if (mt_exists(assembler->macro_table, token) != MACRO_TABLE_LENGTH) {
+                if (insert_macro(assembler->preprocessed, assembler->macro_table, token, line) == 0) return 0;
+                return 2;
+            }
+
             strcpy(instruction->mnemonic, token);
             readMnemonic = 1;
         }
@@ -150,31 +158,37 @@ int parse_instruction(const Assembler *assembler, const char *line, Instruction 
     return 1;
 }
 
-// Adds Instruction to InstructionList. Converts pseudoinstructions if needed.
+// Adds Instruction to InstructionList, and converts special instructions
 int process_instruction(const Instruction instruction, InstructionList *instruction_list) {
 
-    // Replace pseudo-instructions
-    const int s = process_pseudo(instruction, instruction_list); // Number of instructions written
-    if (s == -1) {
-        return 0;
-    } // Processing failed
-
-    if (s == 0) { // Instruction was not a pseudoinstruction
-        if (add_instruction(instruction_list, instruction) == 0) return 0; // add instruction
+    // Check special cases: `la` (load address) and `li` (load immediate)
+    // necessary because assembler currently doesn't support %hi and %lo
+    if (strcmp(instruction.mnemonic, "la") == 0) {
+        if (la(instruction, instruction_list) == -1) {
+            return 0;
+        }
+        return 1;
+    }
+    if (strcmp(instruction.mnemonic, "li") == 0) {
+        if (li(instruction, instruction_list) == -1) {
+            return 0;
+        }
         return 1;
     }
 
-    // Instruction was a pseudoinstruction
-    return 1;
+    return add_instruction(instruction_list, instruction);
+
 }
 
 // Parses and processes a Line containing an instruction.
-int read_text(const Assembler *assembler, const Line *line) {
+int read_text(const Assembler *assembler, Line *line) {
 
     Instruction instruction;
-    if (parse_instruction(assembler, line->text, &instruction) == 0) {
+    int success = parse_instruction(assembler, line, &instruction);
+    if (success == 0) {
         return 0;
     }
+    if (success == 2) return 1;
     instruction.line = line;
 
     // Add to instruction list
@@ -492,13 +506,16 @@ int assembler_first_pass(Assembler *assembler) {
     enum Segment current_segment = TEXT;
 
     // Loop through each individual line in the file
-    for (size_t i = 0; i < assembler->preprocessed->len; i++) {
-        const Line *line = &assembler->preprocessed->items[i];
+    Line *line = assembler->preprocessed->head;
+    while (line != NULL) {
         ERROR_HANDLER.line = line;
+
+        // preprocessor sometimes leaves trailing spaces; i should fix this there
+        if (line->text[strlen(line->text)-1] == ' ') line->text[strlen(line->text)-1] = '\0';
 
         // Read directive
         if (line->text[0] == '.') {
-            char directive[7];
+            char directive[16];
             char c = line->text[1];
             int j = 0;
             while (!isspace(c) && c != '\0') {
@@ -510,11 +527,11 @@ int assembler_first_pass(Assembler *assembler) {
 
             if (strcmp(directive, "text") == 0) {
                 current_segment = TEXT;
-                continue;
+                goto continue_line;
             }
             if (strcmp(directive, "data") == 0) {
                 current_segment = DATA;
-                continue;
+                goto continue_line;
             }
             if (strcmp(directive, "globl") == 0) {
                 // Add all arguments to symbol table as global undefined symbols
@@ -536,7 +553,14 @@ int assembler_first_pass(Assembler *assembler) {
 
                     token = tokenize(NULL, ' ');
                 }
-                continue;
+                goto continue_line;
+            }
+            if (strcmp(directive, "macro") == 0) {
+                // Define macro here. Macro is invoked by parse_instruction()
+                Macro macro;
+                line = define_macro(&macro, line);
+                mt_add(assembler->macro_table, macro);
+                goto continue_line;
             }
             if (current_segment != DATA) { // Any other directive must be in the data segment
                 raise_error(TOKEN_ERR, directive, __FILE__);
@@ -557,6 +581,9 @@ int assembler_first_pass(Assembler *assembler) {
                 return 0;
             }
         }
+
+        continue_line:
+        line = line->next;
     }
 
     return 1;
@@ -626,7 +653,7 @@ int assembler_second_pass(Assembler *assembler, const char *output) {
 }
 
 // Converts the output of the preprocessor into machine code and writes it to file
-int assemble(const Text *preprocessed, const char *output) {
+int assemble(Text *preprocessed, const char *output) {
     Assembler assembler;
     if (assembler_init(&assembler, preprocessed) == 0) {
         assembler_destroy(&assembler);
@@ -648,6 +675,9 @@ int assemble(const Text *preprocessed, const char *output) {
         }
     }
 
+    // st_debug(assembler.symbol_table);
+    il_debug(assembler.instruction_list);
+
     if (assembler_second_pass(&assembler, output) == 0) {
         assembler_destroy(&assembler);
         return 0;
@@ -658,12 +688,22 @@ int assemble(const Text *preprocessed, const char *output) {
 }
 
 // Allocates memory for and initializes the components of the assembler given the output of the preprocessor
-int assembler_init(Assembler *assembler, const Text *preprocessed) {
+int assembler_init(Assembler *assembler, Text *preprocessed) {
     assembler->preprocessed = preprocessed;
     assembler->symbol_table = NULL;
+    assembler->macro_table = NULL;
     assembler->data_list = NULL;
     assembler->instruction_list = NULL;
     assembler->instruction_table = NULL;
+
+    // Initialize macro table
+    MacroTable *macro_table = malloc(sizeof(MacroTable));
+    if (macro_table == NULL) {
+        raise_error(MEM, NULL, __FILE__);
+        return 0;
+    }
+    if (mt_init(macro_table) == 0) return 0;
+    assembler->macro_table = macro_table;
 
     // Initialize symbol table
     SymbolTable *symbol_table = malloc(sizeof(SymbolTable));
@@ -715,6 +755,10 @@ int assembler_init(Assembler *assembler, const Text *preprocessed) {
 
 // Frees the resources of the assembler and its components
 void assembler_destroy(Assembler *assembler) {
+    if (assembler->macro_table != NULL) {
+        mt_destroy(assembler->macro_table);
+        free(assembler->macro_table);
+    }
     if (assembler->data_list != NULL) {
         dl_destroy(assembler->data_list);
         free(assembler->data_list);
@@ -729,13 +773,16 @@ void assembler_destroy(Assembler *assembler) {
     }
     if (assembler->instruction_table != NULL) {
         it_destroy(assembler->instruction_table);
+        free(assembler->instruction_table);
     }
     if (assembler->relocation_table != NULL) {
         rt_destroy(assembler->relocation_table);
+        free(assembler->relocation_table);
     }
 }
 
 void assembler_debug(const Assembler *assembler) {
+
     if (assembler->symbol_table != NULL) {
         st_debug(assembler->symbol_table);
     } else {
@@ -758,5 +805,11 @@ void assembler_debug(const Assembler *assembler) {
         rt_debug(assembler->relocation_table);
     } else {
         printf("No relocation table found\n");
+    }
+
+    if (assembler->macro_table != NULL) {
+        mt_debug(assembler->macro_table);
+    } else {
+        printf("No macro table found\n");
     }
 }

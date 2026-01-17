@@ -53,7 +53,7 @@ int get_registers(unsigned int *out, const unsigned char *in, const int *order);
 
 uint32_t convert_rtype(Instruction instruction, const InstrDesc *desc);
 
-uint32_t convert_itype(Instruction instruction, const SymbolTable *symbol_table, RelocationTable *reloc_table, const InstrDesc *desc, uint32_t current_offset);
+uint32_t convert_itype(Instruction instruction, SymbolTable *symbol_table, RelocationTable *reloc_table, const InstrDesc *desc, uint32_t current_offset);
 
 uint32_t convert_jtype(Instruction instruction, const SymbolTable *symbol_table, RelocationTable *reloc_table, const InstrDesc *desc, uint32_t current_offset);
 

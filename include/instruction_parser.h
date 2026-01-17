@@ -3,8 +3,6 @@
 #include <stdint.h>
 #include "utils.h"
 
-/* === TYPES === */
-
 typedef struct {
     char mnemonic[MNEMONIC_LENGTH]; // longest mnemonic is 5 or 6 characters, including some extra bytes just in case
     unsigned char registers[3];

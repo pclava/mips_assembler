@@ -3,6 +3,7 @@
 
 #include "symbol_table.h"
 #include "instruction_parser.h"
+#include "pseudoinstructions.h"
 #include "instructions.h"
 #include "reloc_table.h"
 #include "data_parser.h"
@@ -10,7 +11,8 @@
 /* === TYPES === */
 
 typedef struct {
-    const Text *preprocessed;
+    Text *preprocessed;
+    MacroTable *macro_table;
     DataList *data_list;
     InstructionList *instruction_list;
     SymbolTable *symbol_table;
@@ -20,7 +22,7 @@ typedef struct {
 
 /* === ASSEMBLER STRUCTURE METHODS === */
 
-int assembler_init(Assembler *assembler, const Text *preprocessed);
+int assembler_init(Assembler *assembler, Text *preprocessed);
 
 void assembler_destroy(Assembler *assembler);
 
@@ -32,6 +34,6 @@ int assembler_first_pass(Assembler *assembler);
 
 int assembler_second_pass(Assembler *assembler, const char *output);
 
-int assemble(const Text *preprocessed, const char *output);
+int assemble(Text *preprocessed, const char *output);
 
 #endif //MIPS_ASSEMBLER_ASSEMBLER_H

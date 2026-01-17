@@ -7,7 +7,7 @@
 #include "linker.h"
 
 /*
- $ ./mips_assembler a.out src1 src2 [...src_i]            # assemble and link, linking _start.o and beginning execution there
+ $ ./mips_assembler a.out src1 src2 [...src_i]            # assemble and link, linking __start.o and beginning execution there
  $ ./mips_assembler -c src1 src2 [...src_i]               # only assemble into object files
  $ ./mips_assembler -e. a.out src1 src2 [...src_i]        # -e. begins execution at the first instruction
  $ ./mips_assembler -e symbol a.out src1 src2 [...src_i]  # -e (arg) begins execution at arg
@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char *entry = "_start"; // symbol that execution should begin at; if null, begins at TEXT_START (0x00400000)
+    char *entry = "__start"; // symbol that execution should begin at; if null, begins at TEXT_START (0x00400000)
     const char *out_path = argv[1];
     int file_count = argc-2;
 
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    char *object_files[file_count];
+    char *object_files[file_count+1];
 
     // Assemble each source file
     for (int i = argc-file_count; i < argc; i++) {

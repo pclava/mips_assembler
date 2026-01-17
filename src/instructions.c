@@ -14,13 +14,11 @@ This handles the representation of the MIPS instruction set
 as well as converting the intermediate representation Instruction structures to machine code
 */
 
-#define INSTRUCTION_COUNT 36
-#define INSTRUCTION_TABLE_SIZE 128 // SHOULD BE DECENTLY LARGER THAN INSTRUCTION COUNT
+#define INSTRUCTION_COUNT 39
+#define INSTRUCTION_TABLE_SIZE 256 // SHOULD BE DECENTLY LARGER THAN INSTRUCTION COUNT
 
 /* NOT SUPPORTED:
- * lbu
  * lhu
- * lb
  * ll
  * all floating point instructions
  * mfc0
@@ -47,6 +45,7 @@ static const InstrDesc instr_table[INSTRUCTION_COUNT] = {
     { "divu",  0x00,  0x1b, R, {0,1,-1} },
     { "mfhi",  0x00,  0x10, R, {2,-1,-1} },
     { "mflo",  0x00,  0x12, R, {2,-1,-1} },
+    { "mul",   0x1c,  0x02, R, {2,0,1} },
     { "mult",  0x00,  0x18, R, {0,1,-1} },
     { "multu", 0x00,  0x19, R, {0,1,-1} },
     { "sra",   0x00,  0x03, R, {2,1,-1} },
@@ -70,7 +69,9 @@ static const InstrDesc instr_table[INSTRUCTION_COUNT] = {
     { "lui",   0x0f, -1, I, {1,-1,-1} },
 
     // Memory instructions
+    { "lb",    0x20, -1, I, {1,-1,-1} },
     { "lw",    0x23, -1, I, {1,-1,-1} },
+    { "lbu",   0x24, -1, I, {1,-1,-1} },
     { "sb",    0x28, -1, I, {1,-1,-1} },
     { "sh",    0x29, -1, I, {1,-1,-1} },
     { "sw",    0x2b, -1, I, {1,-1,-1} },
@@ -147,6 +148,10 @@ InstrDesc *it_lookup(const InstructionTable *table, const char *mnemonic) {
             raise_error(TOKEN_ERR, mnemonic, __FILE__);
             return NULL;
         }
+        if (!table->buckets[index].inUse) {
+            raise_error(TOKEN_ERR, mnemonic, __FILE__);
+            return NULL;
+        }
     }
 
     return &table->buckets[index].item;
@@ -180,7 +185,7 @@ int get_registers(unsigned int *out, const unsigned char *in, const int *order) 
     return 1;
 }
 
-uint32_t convert_rtype(const Instruction instruction, const InstrDesc *desc) {
+uint32_t convert_rtype(Instruction instruction, const InstrDesc *desc) {
     if (desc->format != R) {
         raise_error(NOERR, NULL, __FILE__);
         return -1;
@@ -227,7 +232,7 @@ uint32_t convert_rtype(const Instruction instruction, const InstrDesc *desc) {
     return opcode | regs[0] | regs[1] | regs[2] | shamt | funct;
 }
 
-uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_table, RelocationTable *reloc_table, const InstrDesc *desc, const uint32_t current_offset) {
+uint32_t convert_itype(const Instruction instruction, SymbolTable *symbol_table, RelocationTable *reloc_table, const InstrDesc *desc, const uint32_t current_offset) {
     if (desc->format != I) {
         raise_error(NOERR, NULL, __FILE__);
         return -1;
@@ -239,7 +244,7 @@ uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_
 
      * conditional branches: opcodes 0x4 and 0x5
      * traditional operations (i.e. rt = f(rs)): opcodes 0x8 - 0xF
-     * memory instructions: opcodes 0x23 - 0x30
+     * memory instructions: opcodes 0x20 - 0x30
      The immediates for these instructions are handled differently.
     */
 
@@ -252,7 +257,6 @@ uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_
         raise_error(ARGS_INV, NULL, __FILE__);
         return -1;
     }
-
 
     // Get immediate
     uint32_t imm = 0;
@@ -319,18 +323,17 @@ uint32_t convert_itype(const Instruction instruction, const SymbolTable *symbol_
         // Convert to unsigned 32-bits
         imm = (uint32_t) signed_immediate & 0x0000FFFF;
     }
-    else if (opcode >= 35 && opcode <= 43) { // Memory instruction
+    else if (opcode >= 32 && opcode <= 43) { // Memory instruction
         // Get rs and immediate from instruction.immediate
         // Address is in the form imm(rs) or (rs), i.e., 0x542($t2). If no number given, 0 is used
 
-        if (instruction.imm.type != SYMBOL) {
+        if (instruction.imm.type != REG_OFFSET) {
             raise_error(ARGS_INV, NULL, __FILE__);
             return -1;
         }
 
         Immediate i;
         const int r = read_base_address(instruction.imm.symbol, &i);
-        st_remove_symbol(symbol_table, instruction.imm.symbol);
         if (r == -1) {
             raise_error(ARG_INV, instruction.imm.symbol, __FILE__);
             return -1;
