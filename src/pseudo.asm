@@ -21,3 +21,7 @@
 .macro move %r1 %r2
     addu %r1 $0 %r2
 .end_macro
+
+.macro b %lbl
+    beq $0 $0 %lbl
+.end_macro

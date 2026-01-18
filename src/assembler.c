@@ -110,8 +110,8 @@ int parse_instruction(const Assembler *assembler, Line *line, Instruction *instr
 
                 const unsigned char r = get_register(token);
                 if (r == 255) {
-                    raise_error(ARG_INV, token, __FILE__);
-                    return 0;
+                    // Failed, assume immediate
+                    goto is_imm;
                 }
 
                 args[argc] = r;
@@ -120,6 +120,7 @@ int parse_instruction(const Assembler *assembler, Line *line, Instruction *instr
 
             // Argument isn't a register, so assume it's an immediate
             else {
+                is_imm:
                 instruction->imm = parse_imm(token);
                 if (instruction->imm.modifier == 255) {
                     return 0;

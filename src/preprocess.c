@@ -55,6 +55,13 @@ int preprocess_file(FILE *inp, const char *path, Text *text) {
                 readingString = 1;
             }
 
+            else if (c == ',') {
+                if (isspace(prev) || prev == '\0') continue;
+                line_add_char(&line, ' ');
+                prev = ' ';
+                continue;
+            }
+
             // Skip whitespace if previous character was also whitespace
             else if (isspace(c) && (isspace(prev) || prev == '\0')) {
                 continue; // without updating prev

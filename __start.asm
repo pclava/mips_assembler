@@ -1,16 +1,16 @@
-# Optionally inserted by the linker at the end of the program
-# Calls "main"
+# Optionally inserted by the linker at the end of the program - calls the 'main' function
 
 .text
-
 .globl __start
 __start:
-# main(argc, argv)
-lw $a0 0($sp)   # argc
-addiu $a1 $sp 4 # argv
-jal main
-jal __exit
+    move $fp $sp     # Set frame pointer
+
+    # main(argc, argv)
+    lw $a0 0($sp)    # argc = sp[0]
+    addiu $a1 $sp 4  # argv starts at sp[4]
+    addiu $sp $sp -8 # Move stack to fit arguments
+    jal main
 
 __exit:
-li $v0 10
-syscall
+    li $v0 10
+    syscall
