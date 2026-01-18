@@ -277,7 +277,7 @@ int insert_macro(Text *text_list, const MacroTable *table, const char *name, Lin
         new_line = new_line->next;
     }
 
-    text_debug(text_list);
+    // text_debug(text_list);
     return 1;
 }
 

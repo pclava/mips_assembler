@@ -676,7 +676,7 @@ int assemble(Text *preprocessed, const char *output) {
     }
 
     // st_debug(assembler.symbol_table);
-    il_debug(assembler.instruction_list);
+    // il_debug(assembler.instruction_list);
 
     if (assembler_second_pass(&assembler, output) == 0) {
         assembler_destroy(&assembler);
