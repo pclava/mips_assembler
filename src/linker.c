@@ -182,7 +182,7 @@ int file_relocation(const SourceFile *source, const SymbolTable *global_symbols)
     const uint32_t data_offset = source->data_offset;
     for (size_t i = 0; i < reloc_table->len; i++) {
         const RelocationEntry entry = reloc_table->list[i];
-        const Symbol *dependency = st_get_symbol(source->symbol_table, entry.dependency);
+        const Symbol *dependency = st_get_symbol_safe(source->symbol_table, entry.dependency);
 
         // Get final address for each symbol
         uint32_t final_address = 0;
@@ -198,7 +198,7 @@ int file_relocation(const SourceFile *source, const SymbolTable *global_symbols)
                     fprintf(stderr, "Error linking %s: symbol undefined\n", source->name);
                     return 0;
                 }
-                dependency = st_get_symbol(global_symbols, entry.dependency);
+                dependency = st_get_symbol_safe(global_symbols, entry.dependency);
                 if (dependency == NULL) {
                     if (strcmp(entry.dependency, "main") == 0) {
                         fprintf(stderr, "Could not find symbol 'main'. Have you exported it with .globl?\n");
@@ -308,7 +308,7 @@ int link(const char *out_path, char *object_files[], int file_count, const char 
     if (entry_symbol == NULL) {
         final_header.entry = TEXT_START;
     } else {
-        final_header.entry = st_get_symbol(&global_symbols, entry_symbol)->offset;
+        final_header.entry = st_get_symbol_safe(&global_symbols, entry_symbol)->offset;
     }
 
     /*

@@ -11,6 +11,8 @@ __start:
     addiu $sp $sp -8 # Move stack to fit arguments
     jal main
 
+    move $a0 $v0
+
 __exit:
-    li $v0 10
+    li $v0 17
     syscall

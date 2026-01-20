@@ -439,7 +439,7 @@ int write_data(FILE *file, Data data, const SymbolTable *symbol_table, Relocatio
     if (data.isSymbol) {
 
         // Requires R_32 relocation
-        Symbol *s = st_get_symbol(symbol_table, data.value.symbol);
+        Symbol *s = st_get_symbol_safe(symbol_table, data.value.symbol);
         if (s == NULL) return 0;
         RelocationEntry reloc;
 
@@ -545,11 +545,11 @@ int assembler_first_pass(Assembler *assembler) {
                     return 0;
                 }
                 while (token != NULL) {
-                    const unsigned long index = st_exists(assembler->symbol_table, token);
-                    if (index == SYMBOL_TABLE_SIZE) { // symbol does not exist
+                    Symbol *psym = st_get_symbol(assembler->symbol_table, token);
+                    if (psym == NULL) {
                         st_add_symbol(assembler->symbol_table, token, 0, UNDEF, GLOBAL);
-                    } else { // symbol exists; make global
-                        assembler->symbol_table->buckets[index].item.binding = GLOBAL;
+                    } else {
+                        psym->binding = GLOBAL;
                     }
 
                     token = tokenize(NULL, ' ');
@@ -669,10 +669,12 @@ int assemble(Text *preprocessed, const char *output) {
     // Check for undefined local symbols and make global
     // This behavior essentially automatically imports any undefined symbol
     for (int i = 0; i < SYMBOL_TABLE_SIZE; i++) {
-        if (assembler.symbol_table->buckets[i].inUse) {
-            if (assembler.symbol_table->buckets[i].item.segment == UNDEF) {
-                assembler.symbol_table->buckets[i].item.binding = GLOBAL;
+        SymbolBucket *cur = assembler.symbol_table->buckets[i];
+        while (cur != NULL) {
+            if (cur->item.segment == UNDEF) {
+                cur->item.binding = GLOBAL;
             }
+            cur = cur->next;
         }
     }
 

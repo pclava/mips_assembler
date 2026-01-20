@@ -266,7 +266,7 @@ uint32_t convert_itype(const Instruction instruction, SymbolTable *symbol_table,
             return -1;
         }
 
-        Symbol *s = st_get_symbol(symbol_table, instruction.imm.symbol);
+        Symbol *s = st_get_symbol_safe(symbol_table, instruction.imm.symbol);
         if (s == NULL) return -1;
         RelocationEntry reloc;
         if (re_init(&reloc, current_offset, TEXT, R_PC16, s->name) == 0) return -1;
@@ -283,7 +283,7 @@ uint32_t convert_itype(const Instruction instruction, SymbolTable *symbol_table,
 
         // hi and lo bits of a symbol
         if (instruction.imm.type == SYMBOL) {
-            Symbol *s = st_get_symbol(symbol_table, instruction.imm.symbol);
+            Symbol *s = st_get_symbol_safe(symbol_table, instruction.imm.symbol);
             if (s == NULL) return -1;
             RelocationEntry reloc;
             imm = 0;
@@ -375,7 +375,7 @@ uint32_t convert_jtype(const Instruction instruction, const SymbolTable *symbol_
     }
 
     // J-type instructions require R_26 relocation
-    const Symbol *s = st_get_symbol(symbol_table, instruction.imm.symbol);
+    const Symbol *s = st_get_symbol_safe(symbol_table, instruction.imm.symbol);
     if (s == NULL) return -1;
     RelocationEntry reloc;
     if (re_init(&reloc, current_offset, TEXT, R_26, s->name) == 0) return -1;

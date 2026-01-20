@@ -17,11 +17,11 @@ typedef struct {
 
 typedef struct {
     Symbol item;
-    unsigned char inUse;
+    void *next;
 } SymbolBucket;
 
 typedef struct {
-    SymbolBucket *buckets;
+    SymbolBucket **buckets;
     size_t size;
 } SymbolTable;
 
@@ -37,7 +37,7 @@ unsigned long st_exists(const SymbolTable *table, const char *name);
 
 Symbol * st_get_symbol(const SymbolTable *table, const char *name);
 
-int st_remove_symbol(SymbolTable *table, const char *name);
+Symbol * st_get_symbol_safe(const SymbolTable *table, const char *name);
 
 void st_destroy(const SymbolTable *t);
 
