@@ -14,7 +14,7 @@ This handles the representation of the MIPS instruction set
 as well as converting the intermediate representation Instruction structures to machine code
 */
 
-#define INSTRUCTION_COUNT 39
+#define INSTRUCTION_COUNT 40
 #define INSTRUCTION_TABLE_SIZE 256 // SHOULD BE DECENTLY LARGER THAN INSTRUCTION COUNT
 
 /* NOT SUPPORTED:
@@ -35,6 +35,7 @@ static const InstrDesc instr_table[INSTRUCTION_COUNT] = {
     { "jr",    0x00,  0x08, R, {0,-1,-1} },
     { "nor",   0x00,  0x27, R, {2,0,1} },
     { "or",    0x00,  0x25, R, {2,0,1} },
+    { "xor",   0x00,  0x26, R, {2,0,1} },
     { "slt",   0x00,  0x2a, R, {2,0,1} },
     { "sltu",  0x00,  0x2b, R, {2,0,1} },
     { "sll",   0x00,  0x00, R, {2,1,-1} },

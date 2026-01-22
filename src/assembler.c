@@ -78,6 +78,7 @@ int parse_instruction(const Assembler *assembler, Line *line, Instruction *instr
 
         // Read mnemonic. This will catch the first token not ending in ':' and set readMnemonic to true.
         else if (!readMnemonic) {
+
             if (len >= MNEMONIC_LENGTH) {
                 raise_error(SIZE_ERR, token, __FILE__);
                 return 0;
