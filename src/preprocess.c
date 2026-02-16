@@ -66,6 +66,8 @@ int preprocess_file(FILE *inp, const char *path, Text *text) {
             else if (isspace(c) && (isspace(prev) || prev == '\0')) {
                 continue; // without updating prev
             }
+            // Replace tab with space
+            else if (c == 9) c = ' ';
 
             // If character is a comment, stop reading and add the line as is
             else if (c == '#') {
